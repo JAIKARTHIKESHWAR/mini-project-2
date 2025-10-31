@@ -1,0 +1,97 @@
+/* Landing.css – FragranceAI premium landing (spec-compliant, dark theme) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #0B0B0B; /* premium black */
+  --surface: #121212;
+  --surface-2: #1A1F24;
+  --text: #F5F7FA;
+  --muted: #C7CED6;
+  --brand: #2C2C2C;
+  --accent-gold: #D4AF37;
+  --accent-rose: #C9A88E;
+  --primary-red: #E60023;
+  --primary-blue: #0066CC;
+  --border: rgba(255,255,255,0.08);
+  --shadow-1: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+
+/* Header */
+.fa-header { position: fixed; inset: 0 0 auto 0; height: 80px; z-index: 1000; backdrop-filter: blur(18px); background: rgba(10,10,10,0.6); border-bottom: 1px solid var(--border); transition: background .3s ease, border-color .3s ease; }
+.fa-header.scrolled { background: rgba(10,10,10,0.9); }
+.fa-header__inner { max-width: 1280px; margin: 0 auto; height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.fa-logo { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; letter-spacing: 0.6px; }
+.fa-nav { display: flex; gap: 28px; }
+.fa-nav__link { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 14px; position: relative; padding: 8px 0; }
+.fa-nav__link::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: linear-gradient(90deg, var(--primary-blue), var(--primary-red)); transition: width .25s ease; }
+.fa-nav__link:hover { color: var(--text); }
+.fa-nav__link:hover::after { width: 100%; }
+.fa-actions { display: flex; gap: 12px; }
+.btn { border-radius: 24px; padding: 10px 20px; font-weight: 600; font-size: 14px; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.btn--outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn--filled { background: linear-gradient(135deg, var(--primary-red), var(--primary-blue)); color: #fff; border: none; box-shadow: var(--shadow-1); }
+.btn--ghost { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); }
+.btn--lg { padding: 14px 28px; border-radius: 30px; }
+.btn:hover { transform: translateY(-2px); }
+
+/* Hero */
+.fa-hero { position: relative; min-height: 100vh; display: grid; place-items: center; overflow: hidden; padding-top: 80px; }
+.fa-hero__bg { position: absolute; inset: 0; }
+.fa-hero__slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.2s ease-in-out; }
+.fa-hero__slide.is-active { opacity: 1; }
+.fa-hero__mesh { position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 40%, rgba(214,174,49,0.18), transparent 60%), radial-gradient(60% 40% at 20% 80%, rgba(198,146,120,0.12), transparent 60%); mix-blend-mode: screen; pointer-events: none; }
+.fa-hero__content { position: relative; z-index: 2; text-align: center; max-width: 900px; padding: 0 20px; }
+.fa-hero__title { font-family: 'Playfair Display', serif; font-size: 64px; line-height: 1.1; letter-spacing: -0.5px; margin-bottom: 16px; }
+.fa-hero__subtitle { font-size: 18px; color: var(--muted); margin-bottom: 32px; }
+.fa-hero__ctas { display: flex; gap: 16px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.fa-hero__scroll { margin-top: 24px; color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+
+/* Masonry base (re-use existing classes) */
+.masonry-section { padding: 80px 24px; background: var(--bg); }
+.masonry-container { max-width: 1280px; margin: 0 auto; }
+.masonry-title { font-family: 'Playfair Display', serif; font-size: 48px; margin-bottom: 8px; }
+.masonry-subtitle { color: var(--muted); margin-bottom: 24px; }
+.my-masonry-grid { display: flex; margin-left: -16px; width: auto; }
+.my-masonry-grid_column { padding-left: 16px; background-clip: padding-box; }
+.fragrance-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow-1); transition: transform .25s ease, box-shadow .25s ease; }
+.fragrance-card:hover { transform: translateY(-6px); }
+.fragrance-image { width: 100%; display: block; }
+
+/* Quote */
+.quote-section { padding: 120px 24px; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.quote-container { max-width: 1100px; margin: 0 auto; text-align: center; }
+.quote-text { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 600; }
+.quote-author { margin-top: 16px; color: var(--muted); }
+
+/* Features */
+.features-section { padding: 100px 24px; background: var(--bg); }
+.features-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: var(--shadow-1); }
+.feature-icon { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--primary-blue), var(--primary-red)); box-shadow: var(--shadow-1); margin-bottom: 12px; }
+.feature-title { font-weight: 700; margin-bottom: 6px; }
+.feature-detail { color: var(--muted); }
+@media (max-width: 900px) { .features-container { grid-template-columns: 1fr; } }
+
+/* CTA */
+.cta-section { padding: 120px 24px; background: var(--surface-2); border-top: 1px solid var(--border); }
+.cta-container { max-width: 1000px; margin: 0 auto; text-align: center; }
+.cta-title { font-family: 'Playfair Display', serif; font-size: 40px; margin-bottom: 24px; }
+.cta-button { background: linear-gradient(135deg, var(--primary-red), var(--primary-blue)); color: #fff; border: none; padding: 14px 28px; border-radius: 30px; font-weight: 700; box-shadow: var(--shadow-1); cursor: pointer; }
+.cta-button:hover { transform: translateY(-3px); }
+
+/* Footer */
+.fa-footer { padding: 60px 24px; background: var(--bg); border-top: 1px solid var(--border); }
+.fa-footer__inner { max-width: 1200px; margin: 0 auto; text-align: center; }
+.fa-footer__brand { font-family: 'Playfair Display', serif; font-weight: 700; margin-bottom: 12px; }
+.fa-footer__links { display: flex; gap: 16px; justify-content: center; margin-bottom: 12px; }
+.fa-footer__link { color: var(--muted); text-decoration: none; }
+.fa-footer__link:hover { color: var(--text); text-decoration: underline; }
+.fa-footer__copy { color: var(--muted); font-size: 13px; }
+
+/* Responsive */
+@media (max-width: 1024px) { .fa-hero__title { font-size: 48px; } }
+@media (max-width: 768px) { .fa-hero__title { font-size: 36px; } .fa-nav { display:none; } .fa-header__inner { padding: 0 16px; } }
+
+/* The rest of the file contains the dark theme legacy selectors retained for compatibility. */
