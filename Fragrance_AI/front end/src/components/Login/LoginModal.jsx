@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import './LoginModal.css';
+import Toast from '../Common/Toast';
 
 const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
@@ -7,37 +8,136 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+
+  // Check for auth messages from URL redirects
+  useEffect(() => {
+    if (isOpen) {
+      const authMessage = sessionStorage.getItem('authMessage');
+      if (authMessage) {
+        setToastMessage(authMessage);
+        setToastType(authMessage.includes('already exists') || authMessage.includes('failed') ? 'error' : 'success');
+        setShowToast(true);
+        sessionStorage.removeItem('authMessage');
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  // Real-time email validation
+  const validateEmail = (value) => {
+    if (!value) {
+      setEmailError('');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError('Invalid email format');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  // Real-time password validation
+  const validatePassword = (value) => {
+    if (!value) {
+      setPasswordError('');
+      return false;
+    }
+    if (value.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    validateEmail(value);
+    setError('');
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    validatePassword(value);
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    // Clear previous errors
     setError('');
+    setEmailError('');
+    setPasswordError('');
+
+    // Validate before submitting
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) {
+      return;
+    }
+
+    setIsLoading(true);
+    
     try {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
+      
       const data = await res.json();
+      
       if (!data.success) {
         // Show specific error messages from backend
-        if (data.message === 'Email not found') {
-          setError('Email not found');
-        } else if (data.message === 'Password incorrect') {
-          setError('Password incorrect');
+        if (res.status === 403 && data.requiresVerification) {
+          // Email not verified
+          setError('Please verify your email address before logging in.');
+          setShowResendVerification(true);
+          setUnverifiedEmail(data.email || email);
+        } else if (res.status === 404 && data.message.includes('Account not found')) {
+          setEmailError('Account not found. Please sign up first.');
+        } else if (res.status === 401 && data.message.includes('Incorrect password')) {
+          setPasswordError('Incorrect password.');
+        } else if (res.status === 400 && data.message.includes('Invalid email format')) {
+          setEmailError('Invalid email format');
         } else {
           setError(data.message || 'Login failed');
         }
       } else {
+        // Success - show toast and redirect
+        setToastMessage('Login successful, redirecting...');
+        setToastType('success');
+        setShowToast(true);
+        
         localStorage.setItem('fragrance_token', data.token);
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('fragrance_user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
+        
+        // Redirect after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 2000);
       }
     } catch (err) {
       setError('Unable to login. Please try again.');
+      setToastMessage('Unable to login. Please try again.');
+      setToastType('error');
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }
@@ -51,80 +151,153 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
     window.location.href = 'http://localhost:5000/api/auth/facebook';
   };
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    
+    setResendLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: unverifiedEmail })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setToastMessage('✅ Verification email sent! Please check your inbox.');
+        setToastType('success');
+        setShowToast(true);
+        setShowResendVerification(false);
+      } else {
+        setToastMessage(data.message || 'Failed to resend verification email.');
+        setToastType('error');
+        setShowToast(true);
+      }
+    } catch (err) {
+      setToastMessage('Unable to resend verification email. Please try again.');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
-    <div className="login-modal-overlay" onClick={onClose}>
-      <div className="login-modal-container" onClick={(e) => e.stopPropagation()}>
-        <button className="login-modal-close" onClick={onClose}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
+    <Fragment>
+      <Toast 
+        message={toastMessage}
+        type={toastType}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+      />
+      <div className="login-modal-overlay" onClick={onClose}>
+        <div className="login-modal-container" onClick={(e) => e.stopPropagation()}>
+          <button className="login-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
 
-        <div className="login-modal-content">
-          <div className="login-modal-header">
-            <div className="login-modal-logo">
-              <div className="login-logo-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
-                  <path d="M19 15L20.09 19.26L24 20L20.09 20.74L19 24L17.91 20.74L14 20L17.91 19.26L19 15Z" fill="currentColor"/>
-                  <path d="M5 15L6.09 19.26L10 20L6.09 20.74L5 24L3.91 20.74L0 20L3.91 19.26L5 15Z" fill="currentColor"/>
-                </svg>
+          <div className="login-modal-content">
+            <div className="login-modal-header">
+              <div className="login-modal-logo">
+                <div className="login-logo-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
+                    <path d="M19 15L20.09 19.26L24 20L20.09 20.74L19 24L17.91 20.74L14 20L17.91 19.26L19 15Z" fill="currentColor"/>
+                    <path d="M5 15L6.09 19.26L10 20L6.09 20.74L5 24L3.91 20.74L0 20L3.91 19.26L5 15Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <span className="login-logo-text">Fragrance AI</span>
               </div>
-              <span className="login-logo-text">Fragrance AI</span>
-            </div>
-            <h2 className="login-modal-title">Welcome to Fragrance AI</h2>
-            <p className="login-modal-subtitle">Find your perfect scent</p>
-          </div>
-
-          <form className="login-modal-form" onSubmit={handleSubmit}>
-            {error && (
-              <div className="login-error" style={{ color: '#ef4444', marginBottom: '8px' }}>{error}</div>
-            )}
-            <div className="login-form-group">
-              <label className="login-form-label">Email</label>
-              <input
-                type="email"
-                className="login-form-input"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <h2 className="login-modal-title">Welcome to Fragrance AI</h2>
+              <p className="login-modal-subtitle">Find your perfect scent</p>
             </div>
 
-            <div className="login-form-group">
-              <div className="login-label-container">
-                <label className="login-form-label">Password</label>
-                <button type="button" className="login-forgot-password">
-                  Forgot your password?
-                </button>
-              </div>
-              <div className="login-password-container">
+            <form className="login-modal-form" onSubmit={handleSubmit}>
+              {error && (
+                <div className="login-error" style={{ color: '#ef4444', marginBottom: '8px' }}>
+                  {error}
+                  {showResendVerification && unverifiedEmail && (
+                    <div style={{ marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={resendLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#1a73e8',
+                          cursor: resendLoading ? 'not-allowed' : 'pointer',
+                          fontSize: '13px',
+                          textDecoration: 'underline',
+                          padding: 0
+                        }}
+                      >
+                        {resendLoading ? 'Sending...' : 'Resend verification email'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="login-form-group">
+                <label className="login-form-label">Email</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="login-form-input"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="email"
+                  className={`login-form-input ${emailError ? 'login-input-error' : ''}`}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={handleEmailChange}
+                  onBlur={() => validateEmail(email)}
                   required
                 />
-                <button
-                  type="button"
-                  className="login-password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
-                    </svg>
-                  )}
-                </button>
+                {emailError && (
+                  <div className="login-field-error">{emailError}</div>
+                )}
               </div>
-            </div>
+
+              <div className="login-form-group">
+                <div className="login-label-container">
+                  <label className="login-form-label">Password</label>
+                  <button 
+                    type="button" 
+                    className="login-forgot-password"
+                    onClick={() => window.location.href = '/forgot-password'}
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
+                <div className="login-password-container">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className={`login-form-input ${passwordError ? 'login-input-error' : ''}`}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    onBlur={() => validatePassword(password)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {passwordError && (
+                  <div className="login-field-error">{passwordError}</div>
+                )}
+              </div>
 
             <button 
               type="submit" 
@@ -191,7 +364,8 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Fragment>
   );
 };
 

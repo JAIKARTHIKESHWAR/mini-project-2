@@ -205,6 +205,43 @@
   color: var(--text-muted);
 }
 
+/* Error states */
+.login-input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+.login-field-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: var(--space-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  animation: loginErrorSlideIn 0.2s ease-out;
+}
+
+@keyframes loginErrorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: var(--space-300);
+  padding: var(--space-300);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--space-200);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 .login-password-container {
   position: relative;
 }
@@ -529,4 +566,4 @@
   .login-social-btn {
     transition: none;
   }
-}
+} 

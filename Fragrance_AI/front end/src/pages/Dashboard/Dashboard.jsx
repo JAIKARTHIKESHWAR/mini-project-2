@@ -4,30 +4,77 @@ import './Dashboard.css';
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Get user data from URL parameters or localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const email = urlParams.get('email');
+    const verifyToken = async () => {
+      try {
+        // Get token from URL parameters or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let token = urlParams.get('token') || localStorage.getItem('fragrance_token') || localStorage.getItem('authToken');
+        const email = urlParams.get('email');
 
-    if (token && email) {
-      // Store token in both keys used across app
-      localStorage.setItem('fragrance_token', token);
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('fragrance_user', JSON.stringify({ email }));
+        if (token && email) {
+          // Store token in both keys used across app
+          localStorage.setItem('fragrance_token', token);
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('fragrance_user', JSON.stringify({ email }));
 
-      // Clean up URL
-      window.history.replaceState({}, document.title, '/dashboard');
-    }
+          // Clean up URL
+          window.history.replaceState({}, document.title, '/dashboard');
+        }
 
-    // Get user from localStorage
-    const storedUser = localStorage.getItem('fragrance_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+        // Verify token with backend if we have one
+        if (token) {
+          const res = await fetch('http://localhost:5000/api/auth/verifyToken', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-    setLoading(false);
+          const data = await res.json();
+          
+          if (data.success && data.user) {
+            setUser(data.user);
+            localStorage.setItem('fragrance_user', JSON.stringify(data.user));
+          } else {
+            // Invalid token - clear and redirect
+            localStorage.removeItem('fragrance_token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('fragrance_user');
+            setError('Session expired. Please login again.');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 2000);
+          }
+        } else {
+          // No token - check localStorage for user data
+          const storedUser = localStorage.getItem('fragrance_user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            // If user exists but no token, still show but warn
+            setUser(parsedUser);
+          } else {
+            setError('Please login to access your dashboard.');
+          }
+        }
+      } catch (err) {
+        console.error('Token verification error:', err);
+        setError('Unable to verify session. Please login again.');
+        localStorage.removeItem('fragrance_token');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('fragrance_user');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifyToken();
   }, []);
 
   const handleLogout = () => {
@@ -45,11 +92,11 @@ const Dashboard = () => {
     );
   }
 
-  if (!user) {
+  if (error || (!user && !loading)) {
     return (
       <div className="dashboard-error">
         <h2>Access Denied</h2>
-        <p>Please log in to access your dashboard.</p>
+        <p>{error || 'Please log in to access your dashboard.'}</p>
         <button onClick={() => window.location.href = '/'} className="login-button">
           Go to Login
         </button>

@@ -2,9 +2,14 @@ import dotenv from 'dotenv';
 import passport from 'passport';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 import User from '../models/User.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables - use same path logic as server.js
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, '../.env') });
 
 /**
  * Facebook OAuth Strategy Configuration

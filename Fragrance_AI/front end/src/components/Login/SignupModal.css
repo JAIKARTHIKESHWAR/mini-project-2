@@ -344,6 +344,109 @@
   color: var(--text-muted);
 }
 
+/* Error states */
+.signup-input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+.signup-field-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: var(--space-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  animation: signupErrorSlideIn 0.2s ease-out;
+}
+
+.signup-password-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: var(--space-100);
+}
+
+/* Password strength indicator */
+.signup-password-strength {
+  margin-top: var(--space-100);
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.signup-password-strength-weak {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.signup-password-strength-medium {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.signup-password-strength-strong {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.signup-password-strength-bar {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.signup-password-strength-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.signup-password-strength-fill-weak {
+  background-color: #ef4444;
+}
+
+.signup-password-strength-fill-medium {
+  background-color: #f59e0b;
+}
+
+.signup-password-strength-fill-strong {
+  background-color: #10b981;
+}
+
+@keyframes signupErrorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.signup-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: var(--space-300);
+  padding: var(--space-300);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--space-200);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.signup-calendar-icon {
+  cursor: pointer;
+}
+
+.signup-calendar-icon:hover {
+  color: var(--text-primary);
+  background: var(--card-bg);
+}
+
 .signup-password-container,
 .signup-birthdate-container {
   position: relative;
@@ -361,7 +464,10 @@
   cursor: pointer;
   padding: var(--space-150);
   border-radius: var(--space-100);
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .signup-password-toggle:hover {
@@ -405,10 +511,20 @@
   transform: translateY(0);
 }
 
-.signup-submit-btn:disabled {
+.signup-submit-btn:disabled,
+.signup-submit-btn.disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  background: var(--input-bg);
+  color: var(--text-muted);
+}
+
+.signup-submit-btn:disabled:hover,
+.signup-submit-btn.disabled:hover {
+  background: var(--input-bg);
+  transform: none;
+  box-shadow: none;
 }
 
 .signup-submit-btn.loading {

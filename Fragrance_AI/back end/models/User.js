@@ -60,6 +60,28 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'suspended', 'pending'],
     default: 'active'
   },
+  // Email verification
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationToken: {
+    type: String,
+    default: null
+  },
+  verificationTokenExpires: {
+    type: Date,
+    default: null
+  },
+  // Password reset
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
+  },
   firstName: {
     type: String,
     trim: true
@@ -219,10 +241,20 @@ userSchema.methods.getFragranceProfile = function() {
 // Static method to find or create OAuth user
 userSchema.statics.findOrCreateOAuthUser = async function(profile, provider) {
   try {
+    // Ensure MongoDB connection is ready
+    if (this.db.readyState !== 1) {
+      throw new Error('Database connection not ready. Please wait and try again.');
+    }
+
+    const email = profile.emails?.[0]?.value?.toLowerCase();
+    if (!email) {
+      throw new Error('Email is required for OAuth authentication');
+    }
+
     let user = await this.findOne({
       $or: [
         { [`${provider}Id`]: profile.id },
-        { email: profile.emails[0].value }
+        { email: email }
       ]
     });
 
@@ -239,24 +271,31 @@ userSchema.statics.findOrCreateOAuthUser = async function(profile, provider) {
     // Create new user
     const newUser = new this({
       [`${provider}Id`]: profile.id,
-      email: profile.emails[0].value,
-      firstName: profile.name.givenName,
-      lastName: profile.name.familyName,
-      username: profile.emails[0].value.split('@')[0] + '_' + Date.now(),
-      profileImage: profile.photos[0]?.value || '',
+      email: email,
+      firstName: profile.name?.givenName || '',
+      lastName: profile.name?.familyName || '',
+      username: email.split('@')[0] + '_' + Date.now(),
+      profileImage: profile.photos?.[0]?.value || '',
       authProvider: provider,
-      isActive: true
+      isActive: true,
+      lastLogin: new Date()
     });
 
     await newUser.save();
+    console.log('✅ Created new OAuth user:', newUser.email);
     return newUser;
   } catch (error) {
+    console.error(`❌ Error creating/finding OAuth user (${provider}):`, error);
     throw new Error(`Error creating/finding OAuth user: ${error.message}`);
   }
 };
 
 // Method to generate JWT token
 userSchema.methods.generateAuthToken = function() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured. Please set it in your .env file.');
+  }
+  
   return jwt.sign(
     { 
       userId: this._id,

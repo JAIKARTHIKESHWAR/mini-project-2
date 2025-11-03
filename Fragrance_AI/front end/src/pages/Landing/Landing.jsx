@@ -55,6 +55,29 @@ const Landing = ({ onLogin }) => {
     'I only want to smell two kinds of perfume on a woman: mine and hers.'
   ]), []);
 
+  // Check URL parameters on mount to handle OAuth redirects
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const showLogin = urlParams.get('showLogin');
+    const message = urlParams.get('message');
+    
+    if (showLogin === 'true') {
+      setShowLoginModal(true);
+      setShowSignupModal(false);
+      
+      // Show toast message if provided
+      if (message) {
+        // Decode the message
+        const decodedMessage = decodeURIComponent(message);
+        // Store in sessionStorage to be picked up by LoginModal
+        sessionStorage.setItem('authMessage', decodedMessage);
+      }
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const openLogin = () => { setShowLoginModal(true); setShowSignupModal(false); };
   const openSignup = () => { setShowSignupModal(true); setShowLoginModal(false); };
   const closeModals = () => { setShowLoginModal(false); setShowSignupModal(false); };

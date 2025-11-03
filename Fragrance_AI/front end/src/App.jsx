@@ -18,6 +18,9 @@ import UserMenu from './components/Common/UserMenu';
 import { useApp } from './context/AppContext';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import AuthError from './pages/Auth/AuthError';
+import VerifyEmail from './pages/Auth/VerifyEmail';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 
 
 function AppContent() {
@@ -62,6 +65,9 @@ function AppContent() {
       <Route path="/" element={<Landing onLogin={handleLogin} />} />
       <Route path="/auth/success" element={<AuthSuccess />} />
       <Route path="/auth/error" element={<AuthError />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={
         (isAuthenticated || localStorage.getItem('fragrance_token') || localStorage.getItem('authToken')) ? <Dashboard /> : <Navigate to="/" replace />
       } />

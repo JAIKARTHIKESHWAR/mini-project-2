@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, Fragment } from 'react';
 import './SignupModal.css';
+import Toast from '../Common/Toast';
 
 const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -12,20 +13,172 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
   const [showBirthdateTips, setShowBirthdateTips] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState(null); // 'weak', 'medium', 'strong'
+  const [passwordStrengthMessage, setPasswordStrengthMessage] = useState('');
+  const [birthdateError, setBirthdateError] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
+  const dateInputRef = useRef(null);
 
   if (!isOpen) return null;
 
+  // Real-time email validation
+  const validateEmail = (value) => {
+    if (!value) {
+      setEmailError('');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError('Invalid email format');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  // Calculate password strength
+  const calculatePasswordStrength = (value) => {
+    if (!value || value.length < 8) {
+      return { strength: 'weak', message: '❌ Weak password — must contain uppercase, number, and special character.', valid: false };
+    }
+
+    const hasUpperCase = /[A-Z]/.test(value);
+    const hasLowerCase = /[a-z]/.test(value);
+    const hasNumber = /[0-9]/.test(value);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value);
+
+    const criteriaCount = [hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar].filter(Boolean).length;
+
+    if (criteriaCount === 4) {
+      return { strength: 'strong', message: '✅ Strong password.', valid: true };
+    } else if (criteriaCount >= 3) {
+      return { strength: 'medium', message: '⚠️ Medium password — consider making it stronger.', valid: true };
+    } else {
+      return { strength: 'weak', message: '❌ Weak password — must contain uppercase, number, and special character.', valid: false };
+    }
+  };
+
+  // Real-time password validation
+  const validatePassword = (value) => {
+    if (!value) {
+      setPasswordError('');
+      setPasswordStrength(null);
+      setPasswordStrengthMessage('');
+      return false;
+    }
+
+    const strengthResult = calculatePasswordStrength(value);
+    setPasswordStrength(strengthResult.strength);
+    setPasswordStrengthMessage(strengthResult.message);
+
+    if (!strengthResult.valid) {
+      setPasswordError(strengthResult.message);
+      return false;
+    }
+
+    setPasswordError('');
+    return true;
+  };
+
+  // Birthdate validation
+  const validateBirthdate = (value) => {
+    if (!value) {
+      setBirthdateError('');
+      return false;
+    }
+    const birthDate = new Date(value);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (age < 13) {
+      setBirthdateError('You must be at least 13 years old');
+      return false;
+    }
+    setBirthdateError('');
+    return true;
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    
+    // Real-time validation
+    if (name === 'email') {
+      validateEmail(value);
+    } else if (name === 'password') {
+      validatePassword(value);
+    } else if (name === 'birthdate') {
+      validateBirthdate(value);
+    }
+    
+    setError('');
+  };
+
+  // Check if form is valid for enabling Continue button (without side effects)
+  const isFormValid = () => {
+    if (!formData.email || !formData.password || !formData.birthdate) {
+      return false;
+    }
+    
+    // Check email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailValid = emailRegex.test(formData.email) && !emailError;
+    
+    // Check password - must be at least medium strength (or strong)
+    const passwordStrengthCheck = calculatePasswordStrength(formData.password);
+    const passwordValid = passwordStrengthCheck.valid && passwordStrength !== 'weak';
+    
+    // Check birthdate (age >= 13)
+    const birthDate = new Date(formData.birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    const birthdateValid = age >= 13 && !birthdateError;
+    
+    return emailValid && passwordValid && birthdateValid;
+  };
+
+  const handleDatePickerClick = () => {
+    if (dateInputRef.current) {
+      dateInputRef.current.showPicker();
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    // Clear previous errors
     setError('');
+    setEmailError('');
+    setPasswordError('');
+    setBirthdateError('');
+
+    // Validate before submitting
+    const isEmailValid = validateEmail(formData.email);
+    const isPasswordValid = validatePassword(formData.password);
+    const isBirthdateValid = validateBirthdate(formData.birthdate);
+
+    if (!isEmailValid || !isPasswordValid || !isBirthdateValid) {
+      return;
+    }
+
+    setIsLoading(true);
+    
     try {
       const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
@@ -37,22 +190,64 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         })
       });
+      
       const data = await res.json();
+      
       if (!data.success) {
         if (data.message === 'User with this email or username already exists') {
-          setError('Email already registered. Please log in instead.');
+          setEmailError('Email already registered. Please log in instead.');
+        } else if (res.status === 400 && data.message.includes('Invalid email format')) {
+          setEmailError('Invalid email format');
+        } else if (res.status === 400 && data.message.includes('Password must be at least 8 characters')) {
+          setPasswordError('Password must be at least 8 characters');
         } else {
           setError(data.message || 'Signup failed');
         }
       } else {
-        localStorage.setItem('fragrance_token', data.token);
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('fragrance_user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
+        // Success - check if email verification is required
+        if (data.requiresVerification) {
+          // Show email verification message
+          setToastMessage('✅ Account created! Please check your email to verify your account.');
+          setToastType('success');
+          setShowToast(true);
+          
+          // Don't store token - user must verify email first
+          localStorage.removeItem('fragrance_token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('fragrance_user');
+          
+          // Redirect to login after 3 seconds (give time to read message)
+          setTimeout(() => {
+            onClose(); // Close signup modal
+            // Switch to login modal via parent callback
+            if (onSwitchToLogin) {
+              onSwitchToLogin();
+            }
+          }, 3000);
+        } else {
+          // Legacy flow (OAuth users might not need verification)
+          setToastMessage('✅ Account created successfully! Redirecting to login...');
+          setToastType('success');
+          setShowToast(true);
+          
+          localStorage.removeItem('fragrance_token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('fragrance_user');
+          
+          setTimeout(() => {
+            onClose();
+            if (onSwitchToLogin) {
+              onSwitchToLogin();
+            }
+          }, 2000);
+        }
       }
     } catch (err) {
       console.error('Registration error:', err);
       setError('Unable to sign up. Please try again.');
+      setToastMessage('❌ Signup failed! Please try again.');
+      setToastType('error');
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }
@@ -67,46 +262,57 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
   };
 
   return (
-    <div className="signup-modal-overlay" onClick={onClose}>
-      <div className="signup-modal-container" onClick={(e) => e.stopPropagation()}>
-        <button className="signup-modal-close" onClick={onClose}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
+    <Fragment>
+      <Toast 
+        message={toastMessage}
+        type={toastType}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+      />
+      <div className="signup-modal-overlay" onClick={onClose}>
+        <div className="signup-modal-container" onClick={(e) => e.stopPropagation()}>
+          <button className="signup-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
 
-        <div className="signup-modal-content">
-          <div className="signup-modal-header">
-            <div className="signup-modal-logo">
-              <div className="signup-logo-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
-                  <path d="M19 15L20.09 19.26L24 20L20.09 20.74L19 24L17.91 20.74L14 20L17.91 19.26L19 15Z" fill="currentColor"/>
-                  <path d="M5 15L6.09 19.26L10 20L6.09 20.74L5 24L3.91 20.74L0 20L3.91 19.26L5 15Z" fill="currentColor"/>
-                </svg>
+          <div className="signup-modal-content">
+            <div className="signup-modal-header">
+              <div className="signup-modal-logo">
+                <div className="signup-logo-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
+                    <path d="M19 15L20.09 19.26L24 20L20.09 20.74L19 24L17.91 20.74L14 20L17.91 19.26L19 15Z" fill="currentColor"/>
+                    <path d="M5 15L6.09 19.26L10 20L6.09 20.74L5 24L3.91 20.74L0 20L3.91 19.26L5 15Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <span className="signup-logo-text">Fragrance AI</span>
               </div>
-              <span className="signup-logo-text">Fragrance AI</span>
+              <h2 className="signup-modal-title">Welcome to Fragrance AI</h2>
+              <p className="signup-modal-subtitle">Find new ideas to try</p>
             </div>
-            <h2 className="signup-modal-title">Welcome to Fragrance AI</h2>
-            <p className="signup-modal-subtitle">Find new ideas to try</p>
-          </div>
 
-          <form className="signup-modal-form" onSubmit={handleSubmit}>
-            {error && (
-              <div className="signup-error" style={{ color: '#ef4444', marginBottom: '8px' }}>{error}</div>
-            )}
-            <div className="signup-form-group">
-              <label className="signup-form-label">Email</label>
-              <input
-                type="email"
-                name="email"
-                className="signup-form-input"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <form className="signup-modal-form" onSubmit={handleSubmit}>
+              {error && (
+                <div className="signup-error" style={{ color: '#ef4444', marginBottom: '8px' }}>{error}</div>
+              )}
+              <div className="signup-form-group">
+                <label className="signup-form-label">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  className={`signup-form-input ${emailError ? 'signup-input-error' : ''}`}
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={() => validateEmail(formData.email)}
+                  required
+                />
+                {emailError && (
+                  <div className="signup-field-error">{emailError}</div>
+                )}
+              </div>
 
             <div className="signup-form-group">
               <div className="signup-label-container">
@@ -150,10 +356,11 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  className="signup-form-input"
+                  className={`signup-form-input ${passwordError ? 'signup-input-error' : ''}`}
                   placeholder="Create a password"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={() => validatePassword(formData.password)}
                   required
                 />
                 <button
@@ -172,9 +379,25 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
                   )}
                 </button>
               </div>
-              <div className="signup-password-hint">
-                Use 8 or more letters, numbers and symbols
-              </div>
+              {passwordStrength && (
+                <div className={`signup-password-strength signup-password-strength-${passwordStrength}`}>
+                  {passwordStrengthMessage}
+                  <div className="signup-password-strength-bar">
+                    <div 
+                      className={`signup-password-strength-fill signup-password-strength-fill-${passwordStrength}`}
+                      style={{ width: passwordStrength === 'weak' ? '33%' : passwordStrength === 'medium' ? '66%' : '100%' }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              {!passwordStrength && (
+                <div className="signup-password-hint">
+                  Use 8 or more letters, numbers and symbols
+                </div>
+              )}
+              {passwordError && passwordStrength !== 'weak' && (
+                <div className="signup-field-error">{passwordError}</div>
+              )}
             </div>
 
             <div className="signup-form-group">
@@ -200,30 +423,41 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
               </div>
               <div className="signup-birthdate-container">
                 <input
+                  ref={dateInputRef}
                   type="date"
                   name="birthdate"
-                  className="signup-form-input"
+                  className={`signup-form-input ${birthdateError ? 'signup-input-error' : ''}`}
                   value={formData.birthdate}
                   onChange={handleChange}
+                  onBlur={() => validateBirthdate(formData.birthdate)}
                   max={new Date().toISOString().split('T')[0]}
                   min={new Date(new Date().setFullYear(new Date().getFullYear() - 120)).toISOString().split('T')[0]}
                   required
                 />
-                <div className="signup-calendar-icon">
+                <button
+                  type="button"
+                  className="signup-calendar-icon"
+                  onClick={handleDatePickerClick}
+                  aria-label="Open date picker"
+                >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z" fill="currentColor"/>
                   </svg>
+                </button>
+              </div>
+              {birthdateError ? (
+                <div className="signup-field-error">{birthdateError}</div>
+              ) : (
+                <div className="signup-birthdate-hint">
+                  mm/dd/yyyy
                 </div>
-              </div>
-              <div className="signup-birthdate-hint">
-                mm/dd/yyyy
-              </div>
+              )}
             </div>
 
             <button 
               type="submit" 
-              className={`signup-submit-btn ${isLoading ? 'loading' : ''}`}
-              disabled={isLoading}
+              className={`signup-submit-btn ${isLoading ? 'loading' : ''} ${!isFormValid() ? 'disabled' : ''}`}
+              disabled={isLoading || !isFormValid()}
             >
               {isLoading ? (
                 <>
@@ -279,7 +513,8 @@ const SignupModal = ({ isOpen, onClose, onSignup, onSwitchToLogin }) => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Fragment>
   );
 };
 

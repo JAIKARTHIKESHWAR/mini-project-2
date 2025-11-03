@@ -3,8 +3,14 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User.js';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables - use same path logic as server.js
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, '../.env') });
 
 /**
  * Google OAuth 2.0 Strategy Configuration
