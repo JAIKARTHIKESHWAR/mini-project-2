@@ -197,6 +197,22 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // If this account was created via OAuth, it won't have a local password
+    if (user.authProvider && user.authProvider !== 'local') {
+      return res.status(400).json({
+        success: false,
+        message: 'This account was created with ' + user.authProvider + '. Please use "Continue with ' + (user.authProvider.charAt(0).toUpperCase() + user.authProvider.slice(1)) + '" to sign in.'
+      });
+    }
+
+    // If no password set, block local login gracefully
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password login is not available for this account. Please reset your password or use social login.'
+      });
+    }
+
     // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
@@ -228,11 +244,11 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    // Generate JWT token (1 hour expiration)
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      { expiresIn: process.env.JWT_EXPIRE || '1h' }
     );
 
     res.json({
@@ -435,7 +451,7 @@ router.get('/google/callback',
         await existingUser.save();
       }
       
-      // Generate JWT token using JWT_SECRET from .env
+      // Generate JWT token using JWT_SECRET from .env (1 hour expiration)
       const token = jwt.sign(
         { 
           userId: user._id,
@@ -443,7 +459,7 @@ router.get('/google/callback',
           authProvider: user.authProvider || 'google'
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+        { expiresIn: process.env.JWT_EXPIRE || '1h' }
       );
 
       const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';

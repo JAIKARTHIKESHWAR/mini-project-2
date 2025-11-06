@@ -1,4 +1,5 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import Review from '../models/Review.js';
 import Perfume from '../models/Perfume.js';
 
@@ -6,8 +7,23 @@ const router = express.Router();
 
 // Middleware to authenticate JWT token
 function authenticateToken(req, res, next) {
+  // Ensure JWT_SECRET is configured
+  if (!process.env.JWT_SECRET) {
+    console.error('❌ JWT_SECRET is not configured!');
+    return res.status(500).json({
+      success: false,
+      message: 'Server configuration error: JWT_SECRET not set'
+    });
+  }
+
+  // Try to get token from Authorization header first
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // If no token in header, try to get from query string or body (for some routes)
+  if (!token) {
+    token = req.query.token || req.body.token;
+  }
 
   if (!token) {
     return res.status(401).json({
@@ -16,7 +32,6 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  const jwt = require('jsonwebtoken');
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({
