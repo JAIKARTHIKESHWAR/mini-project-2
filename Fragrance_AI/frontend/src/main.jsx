@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+
+// All styles consolidated in index.css
 import "./index.css";
 
 // Simple error boundary

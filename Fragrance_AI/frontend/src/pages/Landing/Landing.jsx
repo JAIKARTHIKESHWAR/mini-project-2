@@ -26,21 +26,56 @@ const Landing = ({ onLogin }) => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Load images via glob (sorted, capped to 30)
+  // Enable scrolling for landing page
+  useEffect(() => {
+    const root = document.getElementById('root');
+    document.body.classList.add('landing-active');
+    document.documentElement.classList.add('landing-active');
+    if (root) {
+      root.classList.add('landing-active');
+      root.style.setProperty('overflow', 'visible', 'important');
+    }
+    
+    return () => {
+      document.body.classList.remove('landing-active');
+      document.documentElement.classList.remove('landing-active');
+      if (root) {
+        root.classList.remove('landing-active');
+        root.style.removeProperty('overflow');
+      }
+    };
+  }, []);
+
+  // Load ALL images via glob and preload them
   useEffect(() => {
     const load = async () => {
       const entries = Object.entries(imageImporters).sort(([a], [b]) => a.localeCompare(b));
-      const mods = await Promise.all(entries.slice(0, 60).map(([, imp]) => imp()));
-      const urls = mods.map((m) => m?.default).filter(Boolean).slice(0, 30);
-      setImages(urls);
+      const mods = await Promise.all(entries.map(([, imp]) => imp()));
+      const urls = mods.map((m) => m?.default).filter(Boolean);
+      
+      // Preload all images to prevent blank spaces
+      const imagePromises = urls.map((url) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(url);
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
+      });
+      
+      const loadedUrls = (await Promise.all(imagePromises)).filter(Boolean);
+      setImages(loadedUrls);
     };
     load();
   }, []);
 
-  // Hero slideshow
+  // Hero slideshow - continuous loop through ALL images with slow, smooth transitions
   useEffect(() => {
-    if (images.length < 2) return; 
-    const id = setInterval(() => setCurrentSlide((s) => (s + 1) % images.length), 4500);
+    if (images.length === 0) return; 
+    // Continuous loop through all images - 10s interval (6s transition + 4s display time)
+    const id = setInterval(() => {
+      setCurrentSlide((s) => (s + 1) % images.length);
+    }, 4000);
     return () => clearInterval(id);
   }, [images.length]);
 
@@ -144,9 +179,9 @@ const Landing = ({ onLogin }) => {
       {/* Hero */}
       <section className="fa-hero" id="home">
         <div className="fa-hero__bg">
-          {images.slice(0, 5).map((src, i) => (
+          {images.map((src, i) => (
             <div
-              key={i}
+              key={`slide-${i}-${src}`}
               className={`fa-hero__slide ${currentSlide === i ? 'is-active' : ''}`}
               style={{ backgroundImage: `url(${src})` }}
             />

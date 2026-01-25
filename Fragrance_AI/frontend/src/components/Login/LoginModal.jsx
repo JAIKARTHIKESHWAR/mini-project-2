@@ -115,7 +115,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
     setIsLoading(true);
     
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,12 +199,12 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
   };
 
   const handleGoogleLogin = () => {
-    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     window.location.href = `${API_BASE}/api/auth/google?source=login`;
   };
 
   const handleFacebookLogin = () => {
-    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     window.location.href = `${API_BASE}/api/auth/facebook`;
   };
 
@@ -213,7 +213,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
     
     setResendLoading(true);
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

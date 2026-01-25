@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Landing from './pages/Landing/Landing';
-import Dashboard from './pages/Dashboard/Dashboard';
+import AppShell from './components/layout/AppShell';
+import HomePage from './features/dashboard/home/HomePage';
+import MaestroPage from './features/dashboard/maestro/MaestroPage';
+import PersonalizationLabPage from './features/dashboard/personalization/PersonalizationLabPage';
+import ShoppingPage from './features/dashboard/shopping/ShoppingPage';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import AuthError from './pages/Auth/AuthError';
 import VerifyEmail from './pages/Auth/VerifyEmail';
@@ -69,7 +73,13 @@ function AppContent() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard" element={<AppShell />}>
+        <Route index element={<HomePage />} />
+        <Route path="maestro" element={<MaestroPage />} />
+        <Route path="personalization-lab" element={<PersonalizationLabPage />} />
+        <Route path="shopping" element={<ShoppingPage />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
     </Routes>
   );
 }
@@ -83,5 +93,5 @@ function App() {
     </Router>
   );
 }
-
 export default App;
+

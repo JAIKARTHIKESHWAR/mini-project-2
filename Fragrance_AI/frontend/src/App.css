@@ -1,11 +1,9 @@
 /* App.css */
 
-/* Root container */
+/* Root container - Full width and height for dashboard */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
 }
 
 /* Logo styles */
