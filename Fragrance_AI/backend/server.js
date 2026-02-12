@@ -8,6 +8,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import passport from 'passport';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -195,6 +196,9 @@ async function startServer() {
     optionsSuccessStatus: 200
   };
   app.use(cors(corsOptions));
+
+  // Cookie parser middleware (MUST be before routes that use cookies)
+  app.use(cookieParser());
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));

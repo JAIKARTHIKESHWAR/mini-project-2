@@ -42,7 +42,31 @@ html.landing-active {
 .fa-header { position: fixed; inset: 0 0 auto 0; height: 80px; z-index: 1000; backdrop-filter: blur(18px); background: rgba(10,10,10,0.6); border-bottom: 1px solid var(--border); transition: background .3s ease, border-color .3s ease; }
 .fa-header.scrolled { background: rgba(10,10,10,0.9); }
 .fa-header__inner { max-width: 1280px; margin: 0 auto; height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
-.fa-logo { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; letter-spacing: 0.6px; }
+.fa-logo { display: flex; align-items: center; gap: 16px; }
+.fa-logo__icon { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.fa-logo__text { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.fa-logo__title { 
+  font-family: 'Playfair Display', serif; 
+  font-weight: 700; 
+  font-size: 24px; 
+  line-height: 1.2;
+  letter-spacing: 0.5px; 
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  transform: translateY(-2px); /* Slightly higher for optical balance */
+}
+.fa-logo__subtitle { 
+  font-family: 'Inter', 'Montserrat', sans-serif; 
+  font-weight: 300; 
+  font-size: 11px; 
+  letter-spacing: 1.2px; 
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+  padding: 0;
+  max-width: 140px; /* Width visually ends near "AI" */
+}
 .fa-nav { display: flex; gap: 28px; }
 .fa-nav__link { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 14px; position: relative; padding: 8px 0; }
 .fa-nav__link::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: linear-gradient(90deg, var(--primary-blue), var(--primary-red)); transition: width .25s ease; }

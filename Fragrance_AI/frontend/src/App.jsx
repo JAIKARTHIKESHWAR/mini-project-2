@@ -7,6 +7,7 @@ import HomePage from './features/dashboard/home/HomePage';
 import MaestroPage from './features/dashboard/maestro/MaestroPage';
 import PersonalizationLabPage from './features/dashboard/personalization/PersonalizationLabPage';
 import ShoppingPage from './features/dashboard/shopping/ShoppingPage';
+import ProfilePage from './features/dashboard/profile/ProfilePage';
 import AuthSuccess from './pages/Auth/AuthSuccess';
 import AuthError from './pages/Auth/AuthError';
 import VerifyEmail from './pages/Auth/VerifyEmail';
@@ -20,20 +21,12 @@ function AppContent() {
 
   useEffect(() => {
     const verifyTokenOnStartup = async () => {
-      const token =
-        localStorage.getItem('fragrance_token') ||
-        localStorage.getItem('authToken');
-
-      if (!token) {
-        setIsAuthenticated(false);
-        return;
-      }
-
       try {
+        // Check authentication via cookies (credentials: 'include' sends cookies)
         const res = await fetch('http://localhost:5000/api/auth/verifyToken', {
           method: 'GET',
+          credentials: 'include', // Include cookies
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -44,14 +37,16 @@ function AppContent() {
           console.log('✅ Token verified:', data.user);
           setIsAuthenticated(true);
           dispatch({ type: 'SET_USER', payload: data.user });
+          // Store user data (not tokens) in localStorage for quick access
           localStorage.setItem('fragrance_user', JSON.stringify(data.user));
         } else {
-          localStorage.clear();
+          // Clear user data if authentication fails
+          localStorage.removeItem('fragrance_user');
           setIsAuthenticated(false);
         }
       } catch (err) {
         console.error('Token verification failed:', err);
-        localStorage.clear();
+        localStorage.removeItem('fragrance_user');
         setIsAuthenticated(false);
       }
     };
@@ -78,6 +73,7 @@ function AppContent() {
         <Route path="maestro" element={<MaestroPage />} />
         <Route path="personalization-lab" element={<PersonalizationLabPage />} />
         <Route path="shopping" element={<ShoppingPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

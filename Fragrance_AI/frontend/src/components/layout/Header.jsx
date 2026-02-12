@@ -2,17 +2,13 @@ import React from 'react';
 import { Bell, Menu, Search, ShoppingCart, SunMoon } from 'lucide-react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
-import Avatar from '../ui/Avatar';
 import Tooltip from '../ui/Tooltip';
-import { DropdownMenu, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '../ui/DropdownMenu';
 import useDashboardLayoutStore from '../../features/dashboard/state/useDashboardLayoutStore';
 import useCartStore from '../../features/dashboard/state/useCartStore';
-import useUserStore from '../../features/dashboard/state/useUserStore';
 
 const Header = () => {
   const { toggleSidebar, theme, toggleTheme } = useDashboardLayoutStore();
   const { toggleCart, items } = useCartStore();
-  const { userName, email, avatarUrl, avatarInitials } = useUserStore();
 
   const cartCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
@@ -22,11 +18,8 @@ const Header = () => {
         <Button variant="ghost" size="sm" onClick={toggleSidebar} aria-label="Toggle sidebar">
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="header-brand flex flex-row items-center gap-2 text-sm font-semibold text-white">
-          <div className="header-logo w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-rose-400 flex items-center justify-center text-slate-900 font-bold">
-            AI
-          </div>
-          <span className="hidden sm:inline">Fragrance Maestro</span>
+        <div className="header-brand flex flex-row items-center gap-2 text-sm font-semibold text-white flex-1">
+          {/* Empty space - logo and text removed */}
         </div>
 
         <div className="header-actions flex flex-row items-center gap-2">
@@ -58,28 +51,6 @@ const Header = () => {
               ) : null}
             </button>
           </Tooltip>
-
-          <DropdownMenu
-            trigger={
-              <div className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
-                <Avatar src={avatarUrl} alt={userName} fallback={avatarInitials?.()} size="sm" />
-                <div className="hidden md:block text-left">
-                  <p className="text-sm font-semibold">{userName}</p>
-                  <p className="text-xs text-slate-400">{email}</p>
-                </div>
-              </div>
-            }
-          >
-            <DropdownMenuLabel>Profile</DropdownMenuLabel>
-            <DropdownMenuItem>{userName}</DropdownMenuItem>
-            <DropdownMenuItem className="text-slate-400">{email}</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Personalization</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Notifications</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-rose-300">Log out</DropdownMenuItem>
-          </DropdownMenu>
         </div>
       </div>
     </header>

@@ -118,6 +118,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include', // Include cookies
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -162,10 +163,11 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToSignup }) => {
           setShowToast(true);
         }
       } else {
-        // Success - store tokens and user data
-        localStorage.setItem('fragrance_token', data.token);
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('fragrance_user', JSON.stringify(data.user));
+        // Success - cookies are set automatically by server
+        // Store user data (not tokens) in localStorage for quick access
+        if (data.user) {
+          localStorage.setItem('fragrance_user', JSON.stringify(data.user));
+        }
         
         // Call onLogin callback to update app state
         if (onLogin) {

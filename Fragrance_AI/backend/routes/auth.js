@@ -1,12 +1,37 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
+import crypto from 'crypto';
 import User from '../models/User.js';
+import Session from '../models/Session.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 import '../config/passportGoogle.js';
 import '../config/passportFacebook.js';
 
 const router = express.Router();
+
+// Helper function to generate Gravatar URL from email
+const getGravatarUrl = (email) => {
+  if (!email) return '';
+  const emailHash = crypto
+    .createHash('md5')
+    .update(email.toLowerCase().trim())
+    .digest('hex');
+  return `https://www.gravatar.com/avatar/${emailHash}?d=identicon&s=200`;
+};
+
+// Cookie configuration for HTTP-only cookies
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  path: '/',
+};
+
+// Access token expires in 15 minutes
+const ACCESS_TOKEN_EXPIRE = '15m';
+// Refresh token expires in 7 days
+const REFRESH_TOKEN_EXPIRE = '7d';
 
 // Register
 router.post('/register', async (req, res) => {
@@ -244,28 +269,124 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token (1 hour expiration)
-    const token = jwt.sign(
-      { userId: user._id },
+    // Generate access token (15 minutes)
+    const accessToken = jwt.sign(
+      { userId: user._id.toString() },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '1h' }
+      { expiresIn: ACCESS_TOKEN_EXPIRE }
     );
 
-    res.json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profileImage: user.profileImage,
-        birthdate: user.birthdate,
-        timeZone: user.timeZone
+    // Generate refresh token (7 days)
+    const refreshToken = jwt.sign(
+      { userId: user._id.toString() },
+      process.env.JWT_SECRET,
+      { expiresIn: REFRESH_TOKEN_EXPIRE }
+    );
+
+    // Hash refresh token for storage
+    const refreshTokenHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+
+    // Get IP address and user agent
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+
+    // Create session in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+    try {
+      // First, revoke any existing sessions with the same refresh token hash (if any)
+      await Session.updateMany(
+        { refreshTokenHash, isRevoked: false },
+        { isRevoked: true, updatedAt: new Date() }
+      );
+
+      // Create new session
+      const session = await Session.create({
+        userId: user._id,
+        refreshTokenHash,
+        expiresAt,
+        ipAddress,
+        userAgent
+      });
+      
+      console.log('✅ Session created in database:', {
+        sessionId: session._id.toString(),
+        userId: user._id.toString(),
+        refreshTokenHash: refreshTokenHash.substring(0, 16) + '...',
+        expiresAt: session.expiresAt,
+        ipAddress: ipAddress,
+        userAgent: userAgent?.substring(0, 50) || 'N/A'
+      });
+    } catch (sessionError) {
+      console.error('❌ Error creating session:', {
+        error: sessionError.message,
+        code: sessionError.code,
+        name: sessionError.name,
+        stack: sessionError.stack
+      });
+      
+      // If it's a duplicate key error, try to update existing session instead
+      if (sessionError.code === 11000 || sessionError.message.includes('duplicate')) {
+        try {
+          const existingSession = await Session.findOneAndUpdate(
+            { refreshTokenHash },
+            {
+              userId: user._id,
+              expiresAt,
+              ipAddress,
+              userAgent,
+              isRevoked: false,
+              updatedAt: new Date()
+            },
+            { upsert: true, new: true }
+          );
+          console.log('✅ Session updated/created via upsert:', {
+            sessionId: existingSession._id.toString(),
+            userId: user._id.toString()
+          });
+        } catch (upsertError) {
+          console.error('❌ Error upserting session:', upsertError);
+        }
       }
-    });
+      // Don't fail login if session creation fails, but log it
+      // Session is important but shouldn't block authentication
+    }
+
+    // Get profile image: use OAuth image if available, otherwise Gravatar for local users
+    let profileImage = user.profileImage;
+    if (!profileImage && user.authProvider === 'local' && user.email) {
+      profileImage = getGravatarUrl(user.email);
+    }
+
+    // Set cookies and return user data
+    res
+      .cookie('accessToken', accessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      })
+      .cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      })
+      .json({
+        success: true,
+        message: 'Login successful',
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImage: profileImage,
+          authProvider: user.authProvider,
+          birthdate: user.birthdate,
+          timeZone: user.timeZone
+        }
+      });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
@@ -291,6 +412,12 @@ router.get('/profile', authenticateToken, async (req, res) => {
       });
     }
 
+    // Get profile image: use OAuth image if available, otherwise Gravatar for local users
+    let profileImage = user.profileImage;
+    if (!profileImage && user.authProvider === 'local' && user.email) {
+      profileImage = getGravatarUrl(user.email);
+    }
+
     res.json({
       success: true,
       user: {
@@ -299,7 +426,8 @@ router.get('/profile', authenticateToken, async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        profileImage: user.profileImage,
+        profileImage: profileImage,
+        authProvider: user.authProvider,
         preferences: user.preferences,
         fragranceProfile: user.fragranceProfile,
         wishlist: user.wishlist,
@@ -321,7 +449,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { firstName, lastName, preferences, fragranceProfile } = req.body;
+    const { username, firstName, lastName, preferences, fragranceProfile } = req.body;
     
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -331,32 +459,196 @@ router.put('/profile', authenticateToken, async (req, res) => {
       });
     }
 
-    // Update fields
-    if (firstName) user.firstName = firstName;
-    if (lastName) user.lastName = lastName;
+    // Update username if provided
+    if (username !== undefined && username !== null && username !== '') {
+      // Validate username
+      const trimmedUsername = username.trim();
+      
+      if (trimmedUsername.length < 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username must be at least 3 characters long'
+        });
+      }
+      
+      if (trimmedUsername.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username must be less than 100 characters'
+        });
+      }
+
+      // Check if username is already taken by another user
+      const existingUser = await User.findOne({
+        username: trimmedUsername,
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username is already taken'
+        });
+      }
+
+      console.log(`🔄 Updating username for user ${user._id}: "${user.username}" -> "${trimmedUsername}"`);
+      user.username = trimmedUsername;
+    }
+
+    // Update other fields
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
     if (preferences) user.preferences = { ...user.preferences, ...preferences };
     if (fragranceProfile) user.fragranceProfile = { ...user.fragranceProfile, ...fragranceProfile };
 
-    await user.save();
+    // Save user with validation
+    let savedUser;
+    try {
+      savedUser = await user.save();
+      console.log(`✅ User profile updated successfully. Username: "${savedUser.username}"`);
+    } catch (saveError) {
+      console.error('❌ Error saving user:', saveError);
+      
+      // Handle duplicate key error (MongoDB unique constraint)
+      if (saveError.code === 11000 || saveError.message.includes('duplicate')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username is already taken'
+        });
+      }
+      
+      // Handle validation errors
+      if (saveError.name === 'ValidationError') {
+        const errors = Object.values(saveError.errors).map(err => err.message);
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: errors
+        });
+      }
+      
+      throw saveError; // Re-throw if it's not a handled error
+    }
+
+    // Reload user from database to ensure we have the latest data
+    const updatedUser = await User.findById(savedUser._id);
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found after update'
+      });
+    }
+
+    // Get profile image: use OAuth image if available, otherwise Gravatar for local users
+    let profileImage = updatedUser.profileImage;
+    if (!profileImage && updatedUser.authProvider === 'local' && updatedUser.email) {
+      profileImage = getGravatarUrl(updatedUser.email);
+    }
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
       user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        preferences: user.preferences,
-        fragranceProfile: user.fragranceProfile
+        id: updatedUser._id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        profileImage: profileImage,
+        authProvider: updatedUser.authProvider,
+        preferences: updatedUser.preferences,
+        fragranceProfile: updatedUser.fragranceProfile
       }
     });
   } catch (error) {
     console.error('Profile update error:', error);
+    
+    // Handle duplicate key error (MongoDB unique constraint)
+    if (error.code === 11000 || error.message.includes('duplicate')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is already taken'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Server error updating profile',
+      error: error.message
+    });
+  }
+});
+
+// Change password endpoint (for manual users only)
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    // Validate new password length
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+
+    // Find user with password field
+    const user = await User.findById(req.user.userId).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user is a manual user (has password)
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password change is not available for OAuth accounts'
+      });
+    }
+
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Check if new password is different from current password
+    const isSamePassword = await user.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
+    // Update password (User model will hash it automatically via pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Password changed successfully for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error changing password',
       error: error.message
     });
   }
@@ -451,16 +743,87 @@ router.get('/google/callback',
         await existingUser.save();
       }
       
-      // Generate JWT token using JWT_SECRET from .env (1 hour expiration)
-      const token = jwt.sign(
-        { 
-          userId: user._id,
-          email: user.email,
-          authProvider: user.authProvider || 'google'
-        },
+      // Generate access token (15 minutes)
+      const accessToken = jwt.sign(
+        { userId: user._id.toString() },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '1h' }
+        { expiresIn: ACCESS_TOKEN_EXPIRE }
       );
+
+      // Generate refresh token (7 days)
+      const refreshToken = jwt.sign(
+        { userId: user._id.toString() },
+        process.env.JWT_SECRET,
+        { expiresIn: REFRESH_TOKEN_EXPIRE }
+      );
+
+      // Hash refresh token for storage
+      const refreshTokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
+
+      // Get IP address and user agent
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+
+      // Create session in database
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+      try {
+        // First, revoke any existing sessions with the same refresh token hash (if any)
+        await Session.updateMany(
+          { refreshTokenHash, isRevoked: false },
+          { isRevoked: true, updatedAt: new Date() }
+        );
+
+        // Create new session
+        const session = await Session.create({
+          userId: user._id,
+          refreshTokenHash,
+          expiresAt,
+          ipAddress,
+          userAgent
+        });
+        
+        console.log('✅ Session created in database (Google OAuth):', {
+          sessionId: session._id.toString(),
+          userId: user._id.toString(),
+          refreshTokenHash: refreshTokenHash.substring(0, 16) + '...',
+          expiresAt: session.expiresAt
+        });
+      } catch (sessionError) {
+        console.error('❌ Error creating session (Google OAuth):', {
+          error: sessionError.message,
+          code: sessionError.code,
+          name: sessionError.name
+        });
+        
+        // If it's a duplicate key error, try to update existing session instead
+        if (sessionError.code === 11000 || sessionError.message.includes('duplicate')) {
+          try {
+            const existingSession = await Session.findOneAndUpdate(
+              { refreshTokenHash },
+              {
+                userId: user._id,
+                expiresAt,
+                ipAddress,
+                userAgent,
+                isRevoked: false,
+                updatedAt: new Date()
+              },
+              { upsert: true, new: true }
+            );
+            console.log('✅ Session updated/created via upsert (Google OAuth):', {
+              sessionId: existingSession._id.toString(),
+              userId: user._id.toString()
+            });
+          } catch (upsertError) {
+            console.error('❌ Error upserting session (Google OAuth):', upsertError);
+          }
+        }
+      }
 
       const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
       
@@ -471,10 +834,17 @@ router.get('/google/callback',
         return res.redirect(loginUrl);
       }
       
-      // Otherwise, proceed with normal login flow (redirect to dashboard)
-      const redirectUrl = `${frontendBase}/dashboard?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
-      console.log('✅ Google OAuth success, redirecting to dashboard:', redirectUrl);
-      res.redirect(redirectUrl);
+      // Otherwise, proceed with normal login flow (set cookies and redirect to dashboard)
+      res
+        .cookie('accessToken', accessToken, {
+          ...cookieOptions,
+          maxAge: 15 * 60 * 1000, // 15 minutes
+        })
+        .cookie('refreshToken', refreshToken, {
+          ...cookieOptions,
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        })
+        .redirect(`${frontendBase}/dashboard`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
       const errorMessage = error.message || 'Authentication failed';
@@ -499,14 +869,108 @@ router.get('/facebook', (req, res, next) => {
 
 router.get('/facebook/callback',
   passport.authenticate('facebook', { session: false }),
-  (req, res) => {
+  async (req, res) => {
     try {
-      // Generate JWT token for the authenticated user
-      const token = req.user.generateAuthToken();
-      
-      // Redirect to frontend with token
-      const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/success?token=${token}`;
-      res.redirect(frontendUrl);
+      if (!req.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const user = req.user;
+
+      // Generate access token (15 minutes)
+      const accessToken = jwt.sign(
+        { userId: user._id.toString() },
+        process.env.JWT_SECRET,
+        { expiresIn: ACCESS_TOKEN_EXPIRE }
+      );
+
+      // Generate refresh token (7 days)
+      const refreshToken = jwt.sign(
+        { userId: user._id.toString() },
+        process.env.JWT_SECRET,
+        { expiresIn: REFRESH_TOKEN_EXPIRE }
+      );
+
+      // Hash refresh token for storage
+      const refreshTokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
+
+      // Get IP address and user agent
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+
+      // Create session in database
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+      try {
+        // First, revoke any existing sessions with the same refresh token hash (if any)
+        await Session.updateMany(
+          { refreshTokenHash, isRevoked: false },
+          { isRevoked: true, updatedAt: new Date() }
+        );
+
+        // Create new session
+        const session = await Session.create({
+          userId: user._id,
+          refreshTokenHash,
+          expiresAt,
+          ipAddress,
+          userAgent
+        });
+        
+        console.log('✅ Session created in database (Facebook OAuth):', {
+          sessionId: session._id.toString(),
+          userId: user._id.toString(),
+          refreshTokenHash: refreshTokenHash.substring(0, 16) + '...',
+          expiresAt: session.expiresAt
+        });
+      } catch (sessionError) {
+        console.error('❌ Error creating session (Facebook OAuth):', {
+          error: sessionError.message,
+          code: sessionError.code,
+          name: sessionError.name
+        });
+        
+        // If it's a duplicate key error, try to update existing session instead
+        if (sessionError.code === 11000 || sessionError.message.includes('duplicate')) {
+          try {
+            const existingSession = await Session.findOneAndUpdate(
+              { refreshTokenHash },
+              {
+                userId: user._id,
+                expiresAt,
+                ipAddress,
+                userAgent,
+                isRevoked: false,
+                updatedAt: new Date()
+              },
+              { upsert: true, new: true }
+            );
+            console.log('✅ Session updated/created via upsert (Facebook OAuth):', {
+              sessionId: existingSession._id.toString(),
+              userId: user._id.toString()
+            });
+          } catch (upsertError) {
+            console.error('❌ Error upserting session (Facebook OAuth):', upsertError);
+          }
+        }
+      }
+
+      // Set cookies and redirect to dashboard
+      const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`;
+      res
+        .cookie('accessToken', accessToken, {
+          ...cookieOptions,
+          maxAge: 15 * 60 * 1000, // 15 minutes
+        })
+        .cookie('refreshToken', refreshToken, {
+          ...cookieOptions,
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        })
+        .redirect(frontendUrl);
     } catch (error) {
       console.error('Facebook OAuth callback error:', error);
       const errorUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/error?message=${encodeURIComponent('Authentication failed')}`;
@@ -1004,18 +1468,150 @@ router.get('/verify', authenticateToken, async (req, res) => {
   }
 });
 
-// Logout endpoint (client-side token removal)
-router.post('/logout', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Logout successful'
-  });
+// Refresh token endpoint
+router.post('/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token required'
+      });
+    }
+
+    // Verify refresh token
+    let payload;
+    try {
+      payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    } catch (err) {
+      // Token expired or invalid
+      res.clearCookie('accessToken', cookieOptions);
+      res.clearCookie('refreshToken', cookieOptions);
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid or expired refresh token'
+      });
+    }
+
+    // Hash the refresh token to find session
+    const refreshTokenHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+
+    // Find valid session
+    const session = await Session.findValidSession(refreshTokenHash);
+
+    if (!session) {
+      res.clearCookie('accessToken', cookieOptions);
+      res.clearCookie('refreshToken', cookieOptions);
+      return res.status(403).json({
+        success: false,
+        message: 'Session not found or revoked'
+      });
+    }
+
+    // Rotate refresh token (generate new one)
+    const newRefreshToken = jwt.sign(
+      { userId: payload.userId },
+      process.env.JWT_SECRET,
+      { expiresIn: REFRESH_TOKEN_EXPIRE }
+    );
+
+    const newRefreshTokenHash = crypto
+      .createHash('sha256')
+      .update(newRefreshToken)
+      .digest('hex');
+
+    // Update session with new refresh token
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+
+    session.refreshTokenHash = newRefreshTokenHash;
+    session.expiresAt = newExpiresAt;
+    session.updatedAt = new Date();
+    await session.save();
+
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      { userId: payload.userId },
+      process.env.JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRE }
+    );
+
+    // Set new cookies
+    res
+      .cookie('accessToken', newAccessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000,
+      })
+      .cookie('refreshToken', newRefreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .json({
+        success: true,
+        message: 'Token refreshed'
+      });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during token refresh',
+      error: error.message
+    });
+  }
+});
+
+// Logout endpoint (server-side session invalidation)
+router.post('/logout', async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (refreshToken) {
+      // Hash the refresh token
+      const refreshTokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
+
+      // Revoke session in database
+      await Session.updateOne(
+        { refreshTokenHash },
+        {
+          isRevoked: true,
+          updatedAt: new Date()
+        }
+      );
+    }
+
+    // Clear cookies
+    res
+      .clearCookie('accessToken', cookieOptions)
+      .clearCookie('refreshToken', cookieOptions)
+      .json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Even if there's an error, clear cookies
+    res
+      .clearCookie('accessToken', cookieOptions)
+      .clearCookie('refreshToken', cookieOptions)
+      .status(500).json({
+        success: false,
+        message: 'Server error during logout',
+        error: error.message
+      });
+  }
 });
 
 // ==================== MIDDLEWARE ====================
 
 // Middleware to authenticate JWT token
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   // Ensure JWT_SECRET is configured
   if (!process.env.JWT_SECRET) {
     console.error('❌ JWT_SECRET is not configured!');
@@ -1025,11 +1621,16 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  // Try to get token from Authorization header first
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.split(' ')[1];
+  // Try to get token from cookie first (preferred)
+  let token = req.cookies?.accessToken;
 
-  // If no token in header, try to get from query string or body (for some routes)
+  // Fallback to Authorization header for backward compatibility
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && authHeader.split(' ')[1];
+  }
+
+  // Fallback to query string or body (for some legacy routes)
   if (!token) {
     token = req.query.token || req.body.token;
   }
@@ -1041,16 +1642,59 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({
-        success: false,
-        message: 'Invalid or expired token'
-      });
-    }
-    req.user = user;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
     next();
-  });
+  } catch (err) {
+    // If access token expired, try to refresh it
+    if (err.name === 'TokenExpiredError') {
+      const refreshToken = req.cookies?.refreshToken;
+      
+      if (refreshToken) {
+        try {
+          // Verify refresh token
+          const refreshPayload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+          
+          // Hash refresh token to find session
+          const refreshTokenHash = crypto
+            .createHash('sha256')
+            .update(refreshToken)
+            .digest('hex');
+
+          // Check if session is valid
+          const session = await Session.findValidSession(refreshTokenHash);
+          
+          if (session) {
+            // Generate new access token
+            const newAccessToken = jwt.sign(
+              { userId: refreshPayload.userId },
+              process.env.JWT_SECRET,
+              { expiresIn: ACCESS_TOKEN_EXPIRE }
+            );
+
+            // Set new access token cookie
+            res.cookie('accessToken', newAccessToken, {
+              ...cookieOptions,
+              maxAge: 15 * 60 * 1000,
+            });
+
+            req.user = refreshPayload;
+            return next();
+          }
+        } catch (refreshErr) {
+          // Refresh token also invalid, clear cookies
+          res.clearCookie('accessToken', cookieOptions);
+          res.clearCookie('refreshToken', cookieOptions);
+        }
+      }
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid or expired token'
+    });
+  }
 }
 
 // Export middleware for use in other routes

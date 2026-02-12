@@ -134,13 +134,100 @@
     --sidebar-ring: 38 80% 55%;
   }
 
-  /* Light theme support */
+  /* ============================================
+     Premium Light Theme - Elegant & Luxurious
+     ============================================ */
   [data-theme="light"] {
-    --glass-bg: rgba(255, 255, 255, 0.4);
-    --glass-bg-hover: rgba(255, 255, 255, 0.6);
-    --glass-border: rgba(0, 0, 0, 0.1);
-    --glass-border-hover: rgba(0, 0, 0, 0.15);
+    /* Base colors - light ivory/champagne foundation */
+    --background: 45 25% 98%;
+    --foreground: 220 20% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
+
+    /* Deep gold accent - rich contrast on light */
+    --primary: 35 70% 40%; /* Darker gold for better contrast */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 30% 96%;
+    --secondary-foreground: 220 20% 12%;
+
+    --muted: 45 25% 94%;
+    --muted-foreground: 220 15% 40%;
+
+    --accent: 35 65% 35%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 45 20% 88%;
+    --input: 45 20% 90%;
+    --ring: 35 70% 40%;
+
+    /* Custom luxury tokens - light theme variants */
+    --gold: 35 70% 40%;
+    --gold-light: 38 75% 50%;
+    --gold-dark: 32 65% 30%;
+    --champagne: 40 30% 85%;
+    --ivory: 45 25% 98%;
+    --obsidian: 220 20% 12%;
+    --charcoal: 220 20% 25%;
+    --smoke: 220 15% 50%;
+
+    /* Glass effect tokens */
+    --glass-bg: rgba(255, 253, 250, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.08);
+
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(35, 70%, 40%), hsl(38, 75%, 50%));
+    --gradient-dark: linear-gradient(180deg, hsl(45, 25%, 96%), hsl(45, 20%, 92%));
+    --gradient-glass: linear-gradient(135deg, rgba(255, 253, 250, 0.9), rgba(250, 248, 245, 0.7));
+
+    /* Shadows - softer for light theme */
+    --shadow-gold: 0 4px 30px hsla(35, 70%, 40%, 0.15);
+    --shadow-elegant: 0 8px 32px hsla(220, 20%, 12%, 0.1);
+    --shadow-card: 0 4px 24px hsla(220, 20%, 12%, 0.08);
+
+    /* Sidebar - light ivory with dark text */
+    --sidebar-background: 45 25% 96%;
+    --sidebar-foreground: 220 20% 12%;
+    --sidebar-primary: 35 70% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 20% 92%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 45 20% 88%;
+    --sidebar-ring: 35 70% 40%;
+
+    /* Legacy tokens compatibility */
+    --lux-bg: linear-gradient(135deg, #faf8f5 0%, #f5f2ed 45%, #f0ede8 100%);
+    --lux-card: rgba(255, 255, 255, 0.9);
+    --lux-border: rgba(0, 0, 0, 0.08);
+    --lux-highlight: #9e6b30; /* Dark gold */
+    --lux-muted: #64748b;
+    --lux-ink: #1e293b;
+    --lux-ink-soft: #64748b;
+    --color-scent-mist: rgba(148, 163, 184, 0.15);
+    --color-scent-amber: rgba(158, 107, 48, 0.8);
+    --color-scent-wood: rgba(139, 69, 19, 0.4);
     --color-scent-deep: rgba(255, 255, 255, 0.95);
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-bg-hover: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-border-hover: rgba(0, 0, 0, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --radius-card: 1rem;
+    --radius-pill: 9999px;
+    --radius-xl: 1.5rem;
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --spacing-card: 1.5rem;
+    --spacing-card-tight: 1rem;
+    --spacing-card-roomy: 2rem;
   }
 
   /* Global Base Styles */
@@ -167,6 +254,174 @@
     overflow-x: hidden;
     margin: 0;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Light theme body styling */
+  [data-theme="light"] body {
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(45, 25%, 96%) 50%, hsl(var(--background)) 100%);
+    color: hsl(var(--foreground));
+  }
+
+  /* Light theme typography improvements */
+  [data-theme="light"] h1,
+  [data-theme="light"] h2,
+  [data-theme="light"] h3,
+  [data-theme="light"] h4 {
+    color: hsl(var(--foreground));
+    font-weight: 700;
+  }
+
+  [data-theme="light"] p {
+    color: hsl(var(--foreground));
+  }
+
+  /* Light theme specific glass effects */
+  [data-theme="light"] .glass-card,
+  [data-theme="light"] .glass-card-hover,
+  [data-theme="light"] .glass-card-tight,
+  [data-theme="light"] .glass-card-roomy {
+    background-color: hsl(var(--card) / 0.85);
+    border-color: hsl(var(--border) / 0.4);
+    box-shadow: var(--shadow-card);
+  }
+
+  [data-theme="light"] .glass-card-hover:hover {
+    border-color: hsl(var(--primary) / 0.4);
+    box-shadow: var(--shadow-gold);
+  }
+
+  /* Light theme pill badges */
+  [data-theme="light"] .pill {
+    background: rgba(158, 107, 48, 0.12);
+    border: 1px solid rgba(158, 107, 48, 0.25);
+    color: #9e6b30;
+  }
+
+  [data-theme="light"] .pill-soft {
+    background: hsl(var(--primary) / 0.12);
+    border: 1px solid hsl(var(--primary) / 0.25);
+    color: hsl(var(--primary));
+  }
+
+  /* Light theme dashboard background */
+  [data-theme="light"] .dashboard-bg {
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(158, 107, 48, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(148, 163, 184, 0.08) 0%, transparent 50%),
+      linear-gradient(135deg, #faf8f5 0%, #f5f2ed 50%, #f0ede8 100%);
+  }
+
+  /* Light theme luxury buttons */
+  [data-theme="light"] .lux-button {
+    border: 1px solid rgba(158, 107, 48, 0.4);
+    background: linear-gradient(135deg, rgba(158, 107, 48, 0.25), rgba(148, 163, 184, 0.2));
+    color: #ffffff;
+    box-shadow: 0 10px 30px rgba(158, 107, 48, 0.25);
+  }
+
+  [data-theme="light"] .lux-button:hover {
+    background: linear-gradient(135deg, rgba(158, 107, 48, 0.35), rgba(148, 163, 184, 0.28));
+    box-shadow: 0 16px 40px rgba(158, 107, 48, 0.35);
+  }
+
+  [data-theme="light"] .lux-button-ghost {
+    border: 1px solid var(--lux-border);
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--lux-ink);
+  }
+
+  [data-theme="light"] .lux-button-ghost:hover {
+    border-color: rgba(158, 107, 48, 0.4);
+    color: hsl(var(--foreground));
+    background: rgba(158, 107, 48, 0.06);
+  }
+
+  /* Light theme scrollbar */
+  [data-theme="light"] ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #9e6b30, #64748b);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+  }
+
+  /* Light theme text gradients */
+  [data-theme="light"] .text-gradient-gold {
+    background-image: var(--gradient-gold);
+  }
+
+  [data-theme="light"] .gradient-text {
+    background: linear-gradient(135deg, #9e6b30, #64748b);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Light theme border glow */
+  [data-theme="light"] .border-glow-gold {
+    box-shadow: 0 0 20px hsla(35, 70%, 40%, 0.2);
+  }
+
+  /* Light theme sonner toast */
+  [data-theme="light"] [data-sonner-toast] {
+    background: #ffffff !important;
+    color: #9e6b30 !important;
+    border: 1px solid rgba(158, 107, 48, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  [data-theme="light"] [data-sonner-toast] [data-title],
+  [data-theme="light"] [data-sonner-toast] [data-description],
+  [data-theme="light"] [data-sonner-toast] [data-icon],
+  [data-theme="light"] [data-sonner-toast] [data-close-button] {
+    color: #9e6b30 !important;
+  }
+
+  [data-theme="light"] [data-sonner-toast] [data-close-button]:hover {
+    background: rgba(158, 107, 48, 0.1) !important;
+  }
+
+  /* Light theme selection */
+  [data-theme="light"] ::selection {
+    background: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+
+  /* Light theme focus styles */
+  [data-theme="light"] *:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--ring)), 0 0 0 4px hsl(var(--background));
+  }
+
+  /* Light theme shimmer animation */
+  [data-theme="light"] .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsla(35, 70%, 40%, 0.1),
+      transparent
+    );
+  }
+
+  /* Light theme landing page specific styles */
+  [data-theme="light"] .frosted {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--lux-border);
+    backdrop-filter: blur(10px);
+  }
+
+  [data-theme="light"] .landing-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="light"] .section-title {
+    color: hsl(var(--foreground));
+  }
+
+  [data-theme="light"] .section-subtitle {
+    color: var(--lux-ink-soft);
   }
 
   html, body, #root {
@@ -815,5 +1070,58 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #EACD76, #00FFFF);
+}
+
+/* Sonner Toast Custom Styling - Yellow text on black banner */
+[data-sonner-toast] {
+  background: #000000 !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: #fbbf24 !important;
+  font-weight: 500 !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: #fbbf24 !important;
+  opacity: 0.9 !important;
+}
+
+[data-sonner-toast] [data-icon] {
+  color: #fbbf24 !important;
+}
+
+[data-sonner-toast] [data-close-button] {
+  color: #fbbf24 !important;
+  opacity: 0.8 !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+  background: rgba(251, 191, 36, 0.1) !important;
+}
+
+/* Ensure all toast types use the same styling */
+[data-sonner-toast][data-type="success"] {
+  background: #000000 !important;
+  color: #fbbf24 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: #000000 !important;
+  color: #fbbf24 !important;
+}
+
+[data-sonner-toast][data-type="loading"] {
+  background: #000000 !important;
+  color: #fbbf24 !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background: #000000 !important;
+  color: #fbbf24 !important;
 }
 

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { Toaster } from "sonner";
 
 // All styles consolidated in index.css
 import "./index.css";
@@ -48,6 +49,18 @@ root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
+      <Toaster 
+        position="top-right"
+        closeButton
+        toastOptions={{
+          style: {
+            background: '#000000',
+            color: '#fbbf24',
+            border: '1px solid rgba(251, 191, 36, 0.3)',
+          },
+          className: 'sonner-toast-custom',
+        }}
+      />
     </ErrorBoundary>
   </React.StrictMode>
 );

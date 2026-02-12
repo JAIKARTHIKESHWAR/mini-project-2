@@ -7,6 +7,7 @@ import FeaturesSection from '../../components/sections/FeaturesSection';
 import CTASection from '../../components/sections/CTASection';
 import LoginModal from '../../components/Login/LoginModal';
 import SignupModal from '../../components/Login/SignupModal';
+import FaviconLogo from '../../logo/favicon_ai.png';
 import './Landing.css';
 
 // Async glob (Vite v5+) – gather up to 30 images
@@ -162,7 +163,17 @@ const Landing = ({ onLogin }) => {
       {/* Header */}
       <header className={`fa-header ${isScrolled ? 'scrolled' : ''}`}> 
         <div className="fa-header__inner">
-          <div className="fa-logo">FragranceAI</div>
+          <div className="fa-logo">
+            <img 
+              src={FaviconLogo} 
+              alt="Fragrance AI" 
+              className="fa-logo__icon"
+            />
+            <div className="fa-logo__text">
+              <h1 className="fa-logo__title">Fragrance AI</h1>
+               
+            </div>
+          </div>
           <nav className="fa-nav">
             <a href="#home" className="fa-nav__link">Home</a>
             <a href="#gallery" className="fa-nav__link">Discover</a>
