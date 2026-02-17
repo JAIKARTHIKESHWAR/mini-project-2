@@ -124,7 +124,8 @@ const perfumeSchema = new mongoose.Schema({
     compatibilityScore: Number
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'fragrance_data'
 });
 
 // Indexes for better performance
@@ -136,18 +137,18 @@ perfumeSchema.index({ price: 1 });
 perfumeSchema.index({ rating: -1 });
 
 // Virtual for full name
-perfumeSchema.virtual('fullName').get(function() {
+perfumeSchema.virtual('fullName').get(function () {
   return `${this.brand} ${this.name}`;
 });
 
 // Method to calculate average rating
-perfumeSchema.methods.calculateAverageRating = function() {
+perfumeSchema.methods.calculateAverageRating = function () {
   // This would be implemented with actual review data
   return this.rating;
 };
 
 // Method to get fragrance profile
-perfumeSchema.methods.getFragranceProfile = function() {
+perfumeSchema.methods.getFragranceProfile = function () {
   return {
     intensity: this.intensity,
     longevity: this.longevity,

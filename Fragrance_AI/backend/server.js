@@ -1,3 +1,7 @@
+import dns from 'dns';
+// Force Node.js to use Google public DNS (fixes SRV lookup failures on restricted networks)
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -24,6 +28,7 @@ import authRoutes from './routes/auth.js';
 import fragranceRoutes from './routes/fragrance.js';
 import customBlendRoutes from './routes/customBlend.js';
 import reviewRoutes from './routes/review.js';
+import ragRoute from './AI/ragRoute.js';
 
 // Validate critical environment variables
 if (!process.env.JWT_SECRET) {
@@ -65,32 +70,40 @@ async function connectToMongoDB(uri, retries = 3, delay = 5000) {
   for (let i = 0; i < retries; i++) {
     try {
       console.log(`🔌 Attempting MongoDB connection (${i + 1}/${retries})...`);
-      
+
       await mongoose.connect(uri, {
-        // Remove strict serverApi options that might cause issues
-        // Use more flexible connection options
+        // Force the correct database name (prevents defaulting to 'test')
+        dbName: 'fragrance',
         connectTimeoutMS: 30000,
         socketTimeoutMS: 45000,
         serverSelectionTimeoutMS: 30000,
         maxPoolSize: 10,
         retryWrites: true,
         w: 'majority',
-        // Disable strict mode for serverApi to avoid version issues
-        // serverApi: {
-        //   version: '1',
-        //   strict: true,
-        //   deprecationErrors: true,
-        // },
       });
-      
+
       console.log("✅ MongoDB Connected to Atlas");
       console.log("📊 Database:", mongoose.connection.db?.databaseName || 'Unknown');
       console.log("🌐 Host:", mongoose.connection.host || 'Unknown');
-      
+
+      // Verify fragrance_data collection exists
+      try {
+        const db = mongoose.connection.db;
+        const count = await db.collection('fragrance_data').countDocuments();
+        console.log(`📦 fragrance_data collection: ${count} documents`);
+        if (count === 0) {
+          console.warn("⚠️  fragrance_data collection is empty! RAG will use fallback search.");
+        }
+        const embCount = await db.collection('fragrance_data').countDocuments({ embedding: { $exists: true } });
+        console.log(`🔢 Documents with embeddings: ${embCount}/${count}`);
+      } catch (diagErr) {
+        console.warn("⚠️  Could not check fragrance_data collection:", diagErr.message);
+      }
+
       return true;
     } catch (err) {
       console.error(`❌ Connection attempt ${i + 1} failed:`, err.message);
-      
+
       if (i < retries - 1) {
         console.log(`⏳ Retrying in ${delay / 1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -100,7 +113,7 @@ async function connectToMongoDB(uri, retries = 3, delay = 5000) {
         console.error("\n🔍 Error Details:");
         console.error("   Type:", err.name);
         console.error("   Message:", err.message);
-        
+
         // Provide helpful troubleshooting information
         console.error("\n💡 Troubleshooting Steps:");
         console.error("   1. Check MongoDB Atlas IP Whitelist:");
@@ -111,19 +124,19 @@ async function connectToMongoDB(uri, retries = 3, delay = 5000) {
         console.error("   3. Check your internet connection");
         console.error("   4. Ensure MongoDB Atlas cluster is running");
         console.error("   5. Verify database user credentials");
-        
+
         if (err.message.includes('authentication') || err.message.includes('credential')) {
           console.error("\n⚠️  Authentication Error Detected:");
           console.error("   - Check your MongoDB username and password in MONGO_URI");
           console.error("   - Ensure the database user has proper permissions");
         }
-        
+
         if (err.message.includes('whitelist') || err.message.includes('IP')) {
           console.error("\n⚠️  IP Whitelist Error Detected:");
           console.error("   - Your IP address needs to be added to MongoDB Atlas whitelist");
           console.error("   - Visit: https://cloud.mongodb.com/ → Network Access → Add IP Address");
         }
-        
+
         throw err;
       }
     }
@@ -134,15 +147,15 @@ async function connectToMongoDB(uri, retries = 3, delay = 5000) {
 async function startServer() {
   // Connect to MongoDB FIRST before anything else
   const MONGO_URI = process.env.MONGO_URI;
-  
+
   try {
     await connectToMongoDB(MONGO_URI);
-    
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       console.error('❌ MongoDB Connection Error:', err);
     });
-    
+
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️  MongoDB disconnected');
       console.log('🔄 Attempting to reconnect...');
@@ -150,11 +163,11 @@ async function startServer() {
         console.error('❌ Reconnection failed:', err.message);
       });
     });
-    
+
     mongoose.connection.on('reconnected', () => {
       console.log('✅ MongoDB reconnected');
     });
-    
+
   } catch (err) {
     console.error("\n❌ Failed to connect to MongoDB. Exiting...");
     process.exit(1);
@@ -189,9 +202,22 @@ async function startServer() {
   });
   app.use('/api/', limiter);
 
-  // CORS configuration
+  // CORS configuration - allow multiple frontend ports during development
   const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL || 'http://localhost:5173',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+      ];
+      // Allow requests with no origin (like server-to-server or Postman)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all in development
+      }
+    },
     credentials: true,
     optionsSuccessStatus: 200
   };
@@ -234,6 +260,7 @@ async function startServer() {
   app.use('/api/fragrance', fragranceRoutes);
   app.use('/api/custom-blend', customBlendRoutes);
   app.use('/api/review', reviewRoutes);
+  app.use('/api/ai', ragRoute);
 
   // 404 handler
   app.use('*', (req, res) => {
@@ -246,7 +273,7 @@ async function startServer() {
   // Global error handler
   app.use((err, req, res, next) => {
     console.error('Global error:', err);
-    
+
     res.status(err.status || 500).json({
       success: false,
       message: err.message || 'Internal server error',

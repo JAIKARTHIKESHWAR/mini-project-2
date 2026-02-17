@@ -13,7 +13,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 // Load environment variables FIRST
-dotenv.config({ path: './back end/.env' });
+dotenv.config();
 
 // User Schema for MongoDB
 const userSchema = new mongoose.Schema({
@@ -90,7 +90,7 @@ app.use(passport.session());
 // Google OAuth Strategy
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   console.log('✅ Setting up Google OAuth strategy...');
-  
+
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -110,7 +110,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       return done(error, null);
     }
   }));
-  
+
   console.log('✅ Google OAuth strategy configured successfully');
 } else {
   console.log('⚠️  Google OAuth credentials not found. Google login will be disabled.');
@@ -127,7 +127,7 @@ passport.deserializeUser((user, done) => {
 });
 
 // MongoDB connection - Using fragrance-db database
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://fragrance_db:151005@fragrance-ai.rrepxjp.mongodb.net/fragrance-db?retryWrites=true&w=majority&appName=fragrance-db";
+const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
   .connect(MONGO_URI, {
@@ -170,29 +170,29 @@ app.get('/api/auth/google', (req, res, next) => {
   })(req, res, next);
 });
 
-app.get('/api/auth/google/callback', 
+app.get('/api/auth/google/callback',
   passport.authenticate('google', { session: false }),
   async (req, res) => {
     try {
       console.log('✅ Google OAuth successful:', req.user);
-      
+
       const userEmail = req.user.emails[0].value;
       const googleId = req.user.id;
-      
+
       // Check if user already exists
       let user = await User.findOne({ googleId: googleId });
-      
+
       if (!user) {
         // Check if user exists with same email but different auth provider
         const existingUser = await User.findOne({ email: userEmail });
-        
+
         if (existingUser) {
           // User exists but with different auth provider
           console.log('⚠️ User exists with different auth provider');
           const errorUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/error?message=${encodeURIComponent('Account already exists with different login method. Please use your original login method.')}`;
           return res.redirect(errorUrl);
         }
-        
+
         // Create new user
         const userData = {
           googleId: googleId,
@@ -206,7 +206,7 @@ app.get('/api/auth/google/callback',
           isActive: true,
           accountStatus: 'active'
         };
-        
+
         user = new User(userData);
         await user.save();
         console.log('✅ New user created in fragrance database');
@@ -216,21 +216,21 @@ app.get('/api/auth/google/callback',
         await user.save();
         console.log('✅ Existing user updated in fragrance database');
       }
-      
+
       // Add login history
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent') || 'Unknown';
       await user.addLoginHistory(ipAddress, userAgent, 'google');
-      
+
       console.log('✅ User data stored in fragrance database:', {
         email: userEmail,
         name: `${user.firstName} ${user.lastName}`,
         googleId: googleId
       });
-      
+
       // Generate JWT token
       const token = user.generateAuthToken();
-      
+
       // Redirect to dashboard with token
       const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard?token=${token}&email=${encodeURIComponent(userEmail)}`;
       res.redirect(dashboardUrl);
@@ -262,16 +262,16 @@ app.get('/api', (req, res) => {
 app.post('/api/auth/check-account', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
       return res.status(400).json({
         success: false,
         message: 'Email is required'
       });
     }
-    
+
     const user = await User.findOne({ email: email.toLowerCase() });
-    
+
     if (user) {
       res.json({
         success: true,
@@ -342,7 +342,7 @@ app.get('/api/users/:email', async (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
-  
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',

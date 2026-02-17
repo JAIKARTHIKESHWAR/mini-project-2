@@ -7,13 +7,15 @@ const initialsFromName = (name) => {
 };
 
 const useUserStore = create((set, get) => ({
+  userId: null,
   userName: 'Guest User',
   email: 'guest@fragrance.ai',
   avatarUrl: '',
   isEmailLinked: false,
   isLoading: false,
-  setUser: ({ userName, email, avatarUrl, isEmailLinked }) =>
+  setUser: ({ userId, userName, email, avatarUrl, isEmailLinked }) =>
     set((state) => ({
+      userId: userId || state.userId,
       userName: userName || state.userName,
       email: email || state.email,
       avatarUrl: avatarUrl ?? state.avatarUrl,
@@ -21,7 +23,7 @@ const useUserStore = create((set, get) => ({
     })),
   fetchUserProfile: async () => {
     set({ isLoading: true });
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/auth/profile', {
         method: 'GET',
@@ -34,15 +36,16 @@ const useUserStore = create((set, get) => ({
       const data = await response.json();
 
       if (data.success && data.user) {
-        const { username, email, profileImage, firstName, lastName } = data.user;
-        
+        const { id, username, email, profileImage, firstName, lastName } = data.user;
+
         // Prioritize username from DB first, then fallback to other options
-        const displayName = username || 
-                           (firstName && lastName ? `${firstName} ${lastName}` : null) ||
-                           (firstName || lastName) ||
-                           (email ? email.split('@')[0] : 'Guest User');
-        
+        const displayName = username ||
+          (firstName && lastName ? `${firstName} ${lastName}` : null) ||
+          (firstName || lastName) ||
+          (email ? email.split('@')[0] : 'Guest User');
+
         set({
+          userId: id,
           userName: username || displayName, // Use username from DB first
           email: email || get().email,
           avatarUrl: profileImage || '',
@@ -51,6 +54,7 @@ const useUserStore = create((set, get) => ({
 
         // Store user data in localStorage for quick access (not tokens)
         localStorage.setItem('fragrance_user', JSON.stringify({
+          id,
           username: username || displayName, // Store actual username from DB
           email,
           profileImage,
@@ -70,7 +74,7 @@ const useUserStore = create((set, get) => ({
   logout: async () => {
     // Import toast dynamically to avoid issues
     const { toast } = await import('sonner');
-    
+
     // Show loading toast
     const toastId = toast.loading('Logging out...', {
       style: {
@@ -93,7 +97,7 @@ const useUserStore = create((set, get) => ({
       console.error('Error during logout API call:', error);
       // Continue with logout even if API call fails
     }
-    
+
     // Wait 3000ms before showing success, clearing data, and redirecting
     // Keep profile visible during this time
     setTimeout(() => {
@@ -105,19 +109,20 @@ const useUserStore = create((set, get) => ({
           border: '1px solid rgba(251, 191, 36, 0.3)',
         },
       });
-      
+
       // Clear user data from localStorage (tokens are in cookies, not localStorage)
       localStorage.removeItem('fragrance_user');
-      
+
       // Reset store to default values only right before redirect
       set({
+        userId: null,
         userName: 'Guest User',
         email: 'guest@fragrance.ai',
         avatarUrl: '',
         isEmailLinked: false,
         isLoading: false,
       });
-      
+
       // Redirect to landing page immediately after clearing data
       window.location.href = '/';
     }, 3000);
