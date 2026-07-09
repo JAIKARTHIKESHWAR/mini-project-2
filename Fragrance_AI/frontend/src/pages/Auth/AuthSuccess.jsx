@@ -64,7 +64,6 @@ const AuthSuccess = () => {
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
         color: 'white',
-        fontFamily: 'Inter, sans-serif'
       }}>
         <div style={{
           width: '60px',
@@ -96,7 +95,6 @@ const AuthSuccess = () => {
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
       color: 'white',
-      fontFamily: 'Inter, sans-serif'
     }}>
       <div style={{ fontSize: '60px', marginBottom: '20px' }}>✅</div>
       <h2>Welcome to Fragrance AI!</h2>

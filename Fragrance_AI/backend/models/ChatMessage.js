@@ -16,9 +16,13 @@ const chatMessageSchema = new mongoose.Schema(
         content: {
             type: String,
             required: true,
+        },
+        showNearbyMap: {
+            type: Boolean,
+            default: false
         }
     },
-    { timestamps: true }
+    { timestamps: true, collection: "chat_messages" }
 );
 
 export default mongoose.model("ChatMessage", chatMessageSchema);

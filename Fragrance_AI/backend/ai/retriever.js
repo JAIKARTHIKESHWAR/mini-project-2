@@ -1,3 +1,7 @@
+import dns from 'dns';
+// Force public DNS (fixes SRV lookup failures on restricted networks)
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+
 import mongoose from "mongoose";
 import { createEmbedding } from "./embedder.js";
 
@@ -158,7 +162,7 @@ async function vectorSearchWithTimeout(collection, query, limit = 4, timeoutMs =
             ]).toArray();
 
             clearTimeout(timer);
-            const filtered = vectorResults.filter(doc => (doc.score || 0) > 0.25);
+            const filtered = vectorResults.filter(doc => (doc.score || 0) > 0.15); // Lowered threshold for broader semantic match
             console.log(`   ⚡ Vector DB: ${Date.now() - searchStart}ms (${filtered.length}/${vectorResults.length} above threshold)`);
             resolve(filtered);
         } catch (err) {
@@ -190,18 +194,29 @@ export async function retrieveRelevantDocs(query) {
         console.log("🔍 Running fast regex search...");
         const regexResults = await regexSearch(collection, query, 5);
 
-        if (regexResults.length > 0) {
+        if (regexResults.length >= 3) { // Require at least 3 keyword matches before skipping vector search
             console.log(`✅ Retriever: ${regexResults.length} docs via [regex] in ${Date.now() - totalStart}ms`);
             return regexResults;
         }
 
-        // === STEP 2: No regex results → try vector search ===
-        console.log("🔍 No regex results → trying vector search...");
-        const vectorResults = await vectorSearchWithTimeout(collection, query, 4, 12000);
+        // === STEP 2: No regex results OR too few → try vector search ===
+        console.log("🔍 Trying vector search for better semantic coverage...");
+        const vectorResults = await vectorSearchWithTimeout(collection, query, 6, 12000);
 
-        if (vectorResults.length > 0) {
-            console.log(`✅ Retriever: ${vectorResults.length} docs via [vector] in ${Date.now() - totalStart}ms`);
-            return vectorResults;
+        // Merge results (favoring regex matches at the top)
+        const seen = new Set(regexResults.map(d => d._id.toString()));
+        const merged = [...regexResults];
+
+        for (const doc of vectorResults) {
+            if (!seen.has(doc._id.toString())) {
+                merged.push(doc);
+                seen.add(doc._id.toString());
+            }
+        }
+
+        if (merged.length > 0) {
+            console.log(`✅ Retriever: ${merged.length} docs [merged] in ${Date.now() - totalStart}ms`);
+            return merged.slice(0, 8); // Return top 8 results
         }
 
         // === STEP 3: Nothing found ===

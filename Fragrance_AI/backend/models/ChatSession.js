@@ -13,7 +13,7 @@ const chatSessionSchema = new mongoose.Schema(
             default: "New Chat",
         }
     },
-    { timestamps: true }
+    { timestamps: true, collection: "chat_sessions" }
 );
 
 export default mongoose.model("ChatSession", chatSessionSchema);

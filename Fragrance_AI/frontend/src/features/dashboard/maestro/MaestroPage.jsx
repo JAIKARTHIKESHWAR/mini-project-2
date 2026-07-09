@@ -35,25 +35,10 @@ const MaestroPage = () => {
         inner scroll without overflowing the page
       - Your app root / router layout must also carry h-full → 100vh up the chain
     */
-    <div className="flex flex-col h-full" style={{ gap: 12, padding: '8px 0 0 0' }}>
-      {/* Page header */}
-      <div className="flex-shrink-0 px-1">
-        <p className="text-xs uppercase tracking-[0.15em] font-medium"
-          style={{ color: 'rgba(251,191,36,0.65)' }}>
-          Powered by AI
-        </p>
-        <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight leading-tight mt-0.5">
-          Chat with Maestro
-        </h1>
-        <p className="text-sm text-slate-400 mt-0.5">
-          Your personal fragrance expert — discover, customize, and find your signature scent.
-        </p>
-      </div>
+    <div className="flex flex-col h-full" style={{ gap: 8, padding: '0' }}>
+      {/* Page header removed */}
 
-      {/* Prompt chips */}
-      <div className="flex-shrink-0 px-1">
-        <MaestroPromptSuggestions onSelect={(prompt) => setPreset(prompt)} />
-      </div>
+      {/* Suggestions removed from top — now integrated into chat welcome area */}
 
       {/*
         Chat container:

@@ -28,7 +28,8 @@ import authRoutes from './routes/auth.js';
 import fragranceRoutes from './routes/fragrance.js';
 import customBlendRoutes from './routes/customBlend.js';
 import reviewRoutes from './routes/review.js';
-import ragRoute from './AI/ragRoute.js';
+import ragRoute from './ai/ragRoute.js';
+import placesRoute from './ai/placesRoute.js';
 
 // Validate critical environment variables
 if (!process.env.JWT_SECRET) {
@@ -202,22 +203,9 @@ async function startServer() {
   });
   app.use('/api/', limiter);
 
-  // CORS configuration - allow multiple frontend ports during development
+  // CORS configuration
   const corsOptions = {
-    origin: function (origin, callback) {
-      const allowedOrigins = [
-        process.env.FRONTEND_URL || 'http://localhost:5173',
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-      ];
-      // Allow requests with no origin (like server-to-server or Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Allow all in development
-      }
-    },
+    origin: ["http://localhost:5173", "http://localhost:4173", "http://localhost:5000"],
     credentials: true,
     optionsSuccessStatus: 200
   };
@@ -261,6 +249,7 @@ async function startServer() {
   app.use('/api/custom-blend', customBlendRoutes);
   app.use('/api/review', reviewRoutes);
   app.use('/api/ai', ragRoute);
+  app.use('/api/places', placesRoute);
 
   // 404 handler
   app.use('*', (req, res) => {

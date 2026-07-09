@@ -45,12 +45,14 @@ const AppShell = () => {
       {/* SIDEBAR */}
       <aside
         className={clsx(
-          "transition-all duration-300 border-r border-border",
-          "fixed md:relative top-0 left-0 h-screen z-40",
+          "transition-all duration-300 border border-border/10",
+          "fixed md:relative top-0 left-0 h-[calc(100vh-24px)] z-40 my-3 ml-3",
+          "bg-card/95 backdrop-blur-xl rounded-[24px]",
           isSidebarOpen ? "w-64" : "w-16",
           "md:block",
           isSidebarOpen ? "block" : "hidden md:block"
         )}
+        style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
       >
         <Sidebar collapsed={!isSidebarOpen} />
       </aside>
@@ -59,8 +61,8 @@ const AppShell = () => {
       <div className="flex flex-col flex-1 min-w-0 md:ml-0">
         <Header />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 py-4">
+        <main className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             <Outlet />
           </div>
         </main>

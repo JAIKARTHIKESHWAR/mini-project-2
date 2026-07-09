@@ -24,7 +24,7 @@ const ScentResultPreview = ({ selected, blendData, loading }) => {
       </div>
 
       {/* Content area */}
-      <div className="space-y-2 flex-1 overflow-auto pr-1 custom-scrollbar">
+      <div className="space-y-2 flex-1 overflow-auto pr-1 custom-scrollbar-black">
         {selected.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             Select notes to find matching fragrances.

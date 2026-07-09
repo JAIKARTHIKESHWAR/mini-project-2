@@ -3,16 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Mic, History } from 'lucide-react';
 import ChatHistoryDrawer from './ChatHistoryDrawer';
 import ProductLogo from '../../../logo/favicon_ai.png';
+// import BannerLogo from '../../../logo/Fragrance_AI logo.jpg';
+import SplashLogo from '../../../logo/Logo_Fragrance.png';
+import favicon_ai from '../../../logo/favicon_ai.png';
+import NearbyShopsMap from '../../../components/map/NearbyShopsMap';
+import MaestroPromptSuggestions from './MaestroPromptSuggestions';
+import { Copy, Check } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GREETING_INTRO =
-  "Hello! I'm Maestro, your personal fragrance advisor. It's a pleasure to have you here.";
+  "Hello! I'm Maestro, your personal fragrance advisor. It's a pleasure to have you here. How can I help you today?";
 
 const ABOUT_RESPONSE =
-  "I'm here to help you discover your perfect signature scent — from classic icons to hidden gems.\n\nWould you like me to help you find your perfect signature scent?";
+  "I'm Maestro — your personal AI fragrance advisor. I can help you discover signature scents, explore perfumes by mood or occasion, decode notes and accords, and find the perfect fragrance for any moment.\n\nWhat would you like to explore today?";
 
 const PROFILING_QUESTIONS = [
   {
@@ -101,6 +107,17 @@ function isGreetingOrAbout(t) {
     'tell me about you', 'how can you help', 'what can you do', 'introduce'].some(p => s.includes(p));
 }
 
+function isDeclineResponse(t) {
+  const s = t.toLowerCase().trim();
+  // Match exact or near-exact decline phrases
+  const declinePhrases = [
+    'no thanks', 'no thank you', 'nope', 'not now', 'maybe later',
+    "that's okay", "thats okay", "i'm good", 'im good', 'no need',
+    'not interested', 'skip', 'pass', 'no, thanks', 'no, thank you',
+  ];
+  return declinePhrases.some(p => s === p || s.startsWith(p));
+}
+
 function getInitials(name) {
   return (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -144,8 +161,13 @@ function detectAnswerChips(text) {
 
   // Explore / recommendation offers
   if (t.includes('explore') || t.includes('more fragrance') || t.includes('other fragrance') ||
-      t.includes('more options') || t.includes('alternatives')) {
+    t.includes('more options') || t.includes('alternatives')) {
     chips.push({ label: 'Explore more', prompt: 'Show me more fragrances' });
+  }
+  
+  // Buying/availability
+  if (t.includes('buy') || t.includes('purchase') || t.includes('where to find') || t.includes('availability')) {
+    chips.push({ label: 'Find Nearby Shops', prompt: 'Find Nearby Perfume Shops' });
   }
 
   // Specific perfume offers
@@ -172,6 +194,36 @@ function detectAnswerChips(text) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ATOMS
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── COMPONENTS ──
+
+const CopyButton = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="mt-1.5 flex items-center gap-1.5 text-[10px] text-white/30 hover:text-white/60 transition-colors"
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <>
+          <Check size={12} className="text-emerald-500" />
+          <span className="text-emerald-500/80">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy size={12} />
+          <span>Copy</span>
+        </>
+      )}
+    </button>
+  );
+};
 
 const MaestroAvatar = ({ size = 36 }) => (
   <div className="relative flex-shrink-0">
@@ -224,10 +276,10 @@ const TypewriterText = ({ text, speed = 13, onDone }) => {
     return () => clearInterval(iv);
   }, [text]);
   return (
-    <span className="whitespace-pre-wrap leading-relaxed">
+    <span className="whitespace-pre-wrap leading-[1.65]">
       {shown}
       {shown.length < text.length && (
-        <span className="inline-block w-0.5 h-[1em] bg-amber-400 ml-0.5 align-middle animate-pulse rounded-full" />
+        <span className="inline-block w-0.5 h-[1.1em] bg-amber-400 ml-0.5 align-middle animate-pulse rounded-full" />
       )}
     </span>
   );
@@ -246,7 +298,7 @@ const FormattedText = ({ text }) => {
   };
 
   return (
-    <div className="text-sm leading-[1.7] space-y-2">
+    <div className="text-sm leading-[1.65] space-y-2.5">
       {text.split('\n').map((line, i) => {
         const trimmed = line.trim();
         if (!trimmed) return <div key={i} className="h-1.5" />;
@@ -304,7 +356,7 @@ const OptionPills = ({ options, onSelect }) => (
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: 0.18, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-    className="mt-3 ml-12 flex flex-wrap gap-2"
+    className="mt-1 flex flex-wrap gap-2"
   >
     {options.map((opt, i) => (
       <motion.button
@@ -340,11 +392,10 @@ const OptionPills = ({ options, onSelect }) => (
   </motion.div>
 );
 
-// Suggestion chips (post-first-msg) — slightly more muted
+// Suggestion chips (post-first-msg) — styled as "small tags"
 const SuggestionChips = ({ suggestions, onSelect }) => (
   <motion.div
-    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-    className="mt-3 ml-12 flex flex-wrap gap-2"
+    className="mt-1 flex flex-wrap gap-1.5 min-h-[30px]"
   >
     {suggestions.map((s, i) => (
       <motion.button
@@ -352,24 +403,24 @@ const SuggestionChips = ({ suggestions, onSelect }) => (
         onClick={() => onSelect(s.prompt)}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.06 * i }}
-        whileHover={{ scale: 1.04, y: -1 }}
-        whileTap={{ scale: 0.96 }}
-        className="px-3.5 py-1.5 text-xs font-medium rounded-full cursor-pointer transition-all duration-200"
+        transition={{ delay: 0.05 * i }}
+        whileHover={{ scale: 1.03, y: -1 }}
+        whileTap={{ scale: 0.97 }}
+        className="px-2.5 py-1 text-[10px] font-medium rounded-lg cursor-pointer transition-all duration-200"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          color: 'rgba(255,255,255,0.5)',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          color: 'rgba(255,255,255,0.4)',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(251,191,36,0.1)';
-          e.currentTarget.style.border = '1px solid rgba(251,191,36,0.35)';
-          e.currentTarget.style.color = 'rgba(251,191,36,0.9)';
+          e.currentTarget.style.background = 'rgba(251,191,36,0.08)';
+          e.currentTarget.style.border = '1px solid rgba(251,191,36,0.25)';
+          e.currentTarget.style.color = 'rgba(251,191,36,0.8)';
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-          e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)';
-          e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+          e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+          e.currentTarget.style.border = '1px solid rgba(255,255,255,0.07)';
+          e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
         }}
       >
         {s.label}
@@ -419,21 +470,16 @@ const IntroSplash = ({ onDone }) => {
         />
       </div>
 
-      {/* Logo — zooms in from large to normal size */}
       <motion.div
         initial={{ scale: 2.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-        className="w-28 h-28 rounded-full overflow-hidden shadow-2xl mb-6"
+        transition={{ type: "tween", ease: "easeOut", duration: 0.5 }}
+        className="w-64 h-64 mb-8"
         style={{
-          border: '2px solid rgba(251,191,36,0.3)',
-          boxShadow: '0 0 60px rgba(251,191,36,0.2), 0 0 120px rgba(251,191,36,0.07)',
-          background: 'radial-gradient(circle, #1a2744 0%, #060c18 100%)',
+          background: 'transparent',
         }}
       >
-        <img src={ProductLogo} alt="Maestro" className="w-full h-full object-cover"
-          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-        <span className="hidden w-full h-full items-center justify-center text-amber-300 font-black text-4xl">M</span>
+        <img src={favicon_ai} alt="Maestro" className="w-full h-full object-contain" />
       </motion.div>
 
       {/* Brand name — slides up and expands */}
@@ -532,12 +578,23 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
     }
   }, [presetMessage, chatReady]);
 
+  // Persist active Maestro session ID across refreshes
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      localStorage.setItem('maestro_active_session', sessionId);
+    } catch {
+      // ignore persistence errors
+    }
+  }, [sessionId]);
+
   const handleIntroDone = () => {
     setChatReady(true);
+    const id = Date.now();
     setTimeout(() => {
       setMessages([{
-        id: 1, role: 'assistant', text: GREETING_INTRO,
-        isStreaming: true, optionCards: null, chips: null,
+        id, role: 'assistant', text: GREETING_INTRO,
+        isStreaming: false, optionCards: null, chips: POST_FIRST_CHIPS,
       }]);
     }, 150);
   };
@@ -550,6 +607,7 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
     if (!sid) {
       // Start new chat — reset everything
       setSessionId(null);
+      try { localStorage.removeItem('maestro_active_session'); } catch {}
       setMessages([]);
       userMsgCount.current = 0;
       profilingStep.current = null;
@@ -560,7 +618,7 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
       setTimeout(() => {
         setMessages([{
           id: Date.now(), role: 'assistant', text: GREETING_INTRO,
-          isStreaming: true, optionCards: null, chips: null,
+          isStreaming: false, optionCards: null, chips: POST_FIRST_CHIPS,
         }]);
       }, 150);
       return;
@@ -577,6 +635,7 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
         id: m.id || m._id,
         role: m.role,
         text: m.text || m.content,
+        showNearbyMap: m.showNearbyMap || false, // ← MAP the flag
         isStreaming: false,
         optionCards: null,
         chips: null
@@ -595,6 +654,21 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
       setIsLoading(false);
     }
   };
+
+  // Restore last active session automatically on mount (if user is still logged in)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('maestro_active_session');
+      if (saved) {
+        setShowIntro(false);
+        setChatReady(true);
+        handleSelectSession(saved);
+      }
+    } catch {
+      // if anything fails, fall back to normal intro flow
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── API call helper ────────────────────────────────────────────────────────
   const callAPI = async (query, currentMessages) => {
@@ -628,7 +702,7 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
     if (!res.ok) throw new Error(data.error || 'API request failed');
     // Update session ID if new one created
     if (data.sessionId) setSessionId(data.sessionId);
-    return data.answer;
+    return { answer: data.answer, showNearbyMap: data.showNearbyMap }; // ← RETURN full object
   };
 
   // ── Core send ──────────────────────────────────────────────────────────────
@@ -644,51 +718,193 @@ const MaestroChatWindow = ({ presetMessage, onPresetConsumed, user }) => {
     const currentMessages = [...messages];
     setMessages(prev => [...prev, userMsg]);
 
-    // ── 1. Pure greeting → ABOUT_RESPONSE locally ─────────────────────────
+    // ── 1. Pure greeting → local warm response, no scent push ────────────
     if (isGreetingOrAbout(trimmed) && profilingStep.current === null) {
+      const id = Date.now() + 1;
       setTimeout(() => {
         setMessages(prev => [...prev, {
-          id: Date.now() + 1, role: 'assistant', text: ABOUT_RESPONSE,
-          isStreaming: true, optionCards: null,
-          chips: isFirstMsg ? POST_FIRST_CHIPS : [
-            { label: 'Yes, find my scent', prompt: 'Yes, help me find my perfect scent' },
+          id, role: 'assistant', text: ABOUT_RESPONSE,
+          isStreaming: false, optionCards: null,
+          chips: [
+            { label: 'Find my perfect scent', prompt: 'I would like to find my perfect signature scent' },
             { label: 'Ask about a perfume', prompt: 'Tell me about a specific perfume' },
+            { label: 'Explore by mood', prompt: 'Recommend a fragrance based on my mood' },
           ],
         }]);
       }, 320);
       return;
     }
 
-    // ── 2. Positive acceptance → start Q1 profiling locally ───────────────
-    if (profilingStep.current === null && isPositiveResponse(trimmed) &&
-      (trimmed.toLowerCase().includes('find') || trimmed.toLowerCase().includes('discover') ||
-        trimmed.toLowerCase().includes('scent') || trimmed.toLowerCase().includes('perfect') ||
-        trimmed === 'yes' || trimmed === 'sure' || trimmed === 'okay' || trimmed === 'ok')) {
-      profilingStep.current = 0;
-      const q = PROFILING_QUESTIONS[0];
+    // ── 1b. Decline / No Thanks (outside profiling) → stop gently ────────
+    if (isDeclineResponse(trimmed) && profilingStep.current === null) {
       setTimeout(() => {
         setMessages(prev => [...prev, {
-          id: Date.now() + 1, role: 'assistant',
+          id: Date.now() + 1,
+          role: 'assistant',
+          text: "Of course. I'll pause here — whenever you're ready to talk about fragrances again, just let me know what you're looking for.",
+          isStreaming: false,
+          optionCards: null,
+          chips: null,
+        }]);
+      }, 280);
+      return;
+    }
+
+    // ── 1c. Map Intercept (Find Nearby Perfume Shops) ─────────────────────
+    const lowerText = trimmed.toLowerCase();
+    const mapPhrases = [
+      'nearby perfume shop',
+      'nearby perfume store',
+      'near me perfume shop',
+      'near me perfume store',
+      'nearby shop for perfumes',
+      'nearby shop for perfume',
+      'nearby perfume shops',
+      'nearby fragrance shop',
+      'perfume shop near me',
+      'perfume stores near me',
+      'local perfume shop',
+      'find nearby perfume shops',
+      'find nearby shop for perfumes',
+      'find nearby shop for perfume',
+      'nearby scent shop',
+    ];
+
+    const wantsMap = mapPhrases.some(p => lowerText.includes(p)) ||
+      (lowerText.includes('nearby') && (lowerText.includes('perfume') || lowerText.includes('fragrance') || lowerText.includes('scent')) && lowerText.includes('shop'));
+
+    if (wantsMap) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, role: 'assistant', 
+          text: "Here are some of the best perfume shops near you. Please ensure your location is enabled.",
+          isStreaming: false, optionCards: null, chips: null, isMap: true
+        }]);
+      }, 400);
+      return;
+    }
+
+    // ── 1d. Personalization / custom‑blend intent → route to Personalized Lab ─
+    const lower = trimmed.toLowerCase();
+    const wantsPersonalize = [
+      'personalize', 'personalise', 'customize', 'customise',
+      'custom scent', 'custom fragrance', 'create my own scent',
+      'create my own perfume', 'blend my own', 'mix my own scent',
+    ].some(p => lower.includes(p));
+
+    if (wantsPersonalize) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          role: 'assistant',
+          text: "For fully personalized or custom‑blend creations, please use the **Personalized Lab** section in your dashboard. Maestro here focuses on analysing your preferences and recommending perfumes from the collection.",
+          isStreaming: false,
+          optionCards: null,
+          chips: [
+            { label: 'Open Personalized Lab', prompt: 'Open Personalized Lab' },
+            { label: 'Help me choose a ready perfume', prompt: 'Help me find a perfume from the collection' },
+          ],
+        }]);
+      }, 280);
+      return;
+    }
+
+    // ── 2. Positive acceptance → start Q1 profiling locally ───────────────
+    const findScentPhrases = [
+      'find my perfect scent',
+      'find my perfect perfume',
+      'find perfume',
+      'find a perfume',
+      'find me a perfume',
+      'need a perfume',
+      'need perfume',
+      'need a scent',
+      'find my scent',
+      'help me find a scent',
+      'help me find a perfume',
+      'recommend a perfume for me',
+    ];
+
+    const wantsFullProfile = profilingStep.current === null && (
+      findScentPhrases.some(p => lower.includes(p)) ||
+      (isPositiveResponse(trimmed) &&
+        (lower.includes('find') || lower.includes('discover') ||
+          lower.includes('scent') || lower.includes('perfect') ||
+          lower === 'yes' || lower === 'sure' || lower === 'okay' || lower === 'ok'))
+    );
+
+    if (wantsFullProfile) {
+      profilingStep.current = 0;
+      const q = PROFILING_QUESTIONS[0];
+      const id = Date.now() + 1;
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id, role: 'assistant',
           text: `Wonderful. I will ask you five quick questions to build your fragrance profile.\n\n**Question 1 — ${q.label}**\n${q.question}`,
-          isStreaming: true, optionCards: q.options, chips: null,
+          isStreaming: false, optionCards: q.options, chips: null,
         }]);
       }, 320);
       return;
     }
 
-    // ── 3. Profiling Q2–Q5 locally ─────────────────────────────────────────
+    // ── 3. Profiling flow: handle declines + strict option validation ─────
     if (profilingStep.current !== null && profilingStep.current < 5) {
       const step = profilingStep.current;
-      profilingAnswers.current[PROFILING_QUESTIONS[step].id] = trimmed;
+      const currentQ = PROFILING_QUESTIONS[step];
+
+      // If the user says "no" or a decline phrase mid‑flow, stop profiling
+      if (isDeclineResponse(trimmed) || lower === 'no') {
+        profilingStep.current = null;
+        profilingAnswers.current = {};
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            text: "No problem — we can skip the profile for now. You can ask about any specific perfume, a type of scent you like, or open the Personalized Lab for custom blends.",
+            isStreaming: false,
+            optionCards: null,
+            chips: [
+              { label: 'Ask about a perfume', prompt: 'Tell me about a specific perfume' },
+              { label: 'Get a quick recommendation', prompt: 'Recommend a perfume for everyday use' },
+              { label: 'Open Personalized Lab', prompt: 'Open Personalized Lab' },
+            ],
+          }]);
+        }, 260);
+        return;
+      }
+
+      // Only accept answers that match one of the defined options
+      const normalized = trimmed.toLowerCase();
+      const matchedOpt = currentQ.options.find(opt =>
+        opt.label.toLowerCase() === normalized
+      );
+
+      if (!matchedOpt) {
+        // Politely reject invalid input and re-show options
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            text: `Thanks for your reply, but for this step please choose **one** of the listed options for **${currentQ.label}** (you can tap a button or type it exactly).\n\nAvailable options:\n${currentQ.options.map(o => `- ${o.label}`).join('\n')}`,
+            isStreaming: false,
+            optionCards: currentQ.options,
+            chips: null,
+          }]);
+        }, 260);
+        return;
+      }
+
+      profilingAnswers.current[currentQ.id] = matchedOpt.label;
       profilingStep.current++;
 
       if (profilingStep.current < 5) {
         const nextQ = PROFILING_QUESTIONS[profilingStep.current];
+        const id = Date.now() + 1;
         setTimeout(() => {
           setMessages(prev => [...prev, {
-            id: Date.now() + 1, role: 'assistant',
+            id, role: 'assistant',
             text: `Noted.\n\n**Question ${profilingStep.current + 1} — ${nextQ.label}**\n${nextQ.question}`,
-            isStreaming: true, optionCards: nextQ.options, chips: null,
+            isStreaming: false, optionCards: nextQ.options, chips: null,
           }]);
         }, 280);
         return;
@@ -702,10 +918,12 @@ Summarize their profile warmly then give a curated recommendation.`;
 
       setIsLoading(true);
       try {
-        const answer = await callAPI(query, [...currentMessages, userMsg]);
+        const { answer, showNearbyMap } = await callAPI(query, [...currentMessages, userMsg]);
         profilingStep.current = null;
         setMessages(prev => [...prev, {
-          id: Date.now() + 2, role: 'assistant', text: answer, isStreaming: true,
+          id: Date.now() + 2, role: 'assistant', text: answer, 
+          showNearbyMap, // ← ATTACH flag
+          isStreaming: true,
           optionCards: null,
           chips: [
             { label: 'Find another scent', prompt: 'I would like to explore more fragrances' },
@@ -725,7 +943,7 @@ Summarize their profile warmly then give a curated recommendation.`;
     // ── 4. All other messages → direct API (including first msg like "I want fresh woody") ──
     setIsLoading(true);
     try {
-      const answer = await callAPI(trimmed, [...currentMessages, userMsg]);
+      const { answer, showNearbyMap } = await callAPI(trimmed, [...currentMessages, userMsg]);
       const wantsScent = answer.toLowerCase().includes('signature scent') || answer.toLowerCase().includes('five question');
       const chips = isFirstMsg ? POST_FIRST_CHIPS
         : wantsScent ? [
@@ -734,8 +952,15 @@ Summarize their profile warmly then give a curated recommendation.`;
         ]
           : detectAnswerChips(answer);
 
+      // Always offer nearby shops as an option if asking for specific perfumes
+      if (!isFirstMsg && !wantsScent && !chips.find(c => c.label === 'Find Nearby Shops')) {
+        chips.push({ label: 'Find Nearby Shops', prompt: 'Find Nearby Perfume Shops' });
+      }
+
       setMessages(prev => [...prev, {
-        id: Date.now() + 1, role: 'assistant', text: answer, isStreaming: true,
+        id: Date.now() + 1, role: 'assistant', text: answer, 
+        showNearbyMap, // ← ATTACH flag
+        isStreaming: true,
         optionCards: null, chips: chips.length > 0 ? chips : null,
       }]);
     } catch {
@@ -752,6 +977,15 @@ Summarize their profile warmly then give a curated recommendation.`;
     sendMessage(val);
   };
 
+  // Resolve userId for ChatHistoryDrawer
+  let resolvedUserId = user?.id;
+  if (!resolvedUserId) {
+    try {
+      const stored = localStorage.getItem('fragrance_user');
+      if (stored) resolvedUserId = JSON.parse(stored).id;
+    } catch { /* ignore */ }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -766,7 +1000,7 @@ Summarize their profile warmly then give a curated recommendation.`;
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
         onSelectSession={handleSelectSession}
-        userId={user?.id}
+        userId={resolvedUserId}
         currentSessionId={sessionId}
       />
 
@@ -777,36 +1011,36 @@ Summarize their profile warmly then give a curated recommendation.`;
         - Input: flex-shrink-0, never scrolls away
       */}
       <div
-        className="flex flex-col h-full rounded-2xl overflow-hidden"
+        className="flex flex-col h-full rounded-2xl overflow-hidden overflow-x-hidden"
         style={{
           background: 'linear-gradient(160deg, #0d1526 0%, #080f1a 100%)',
           border: '1px solid rgba(251,191,36,0.10)',
         }}
       >
-        {/* Header */}
+        {/* Header (Minimal - Logo/Name/History) */}
         <div
           className="flex-shrink-0 flex items-center gap-3 px-5 py-3.5 border-b border-white/5"
-          style={{ background: 'rgba(251,191,36,0.02)' }}
+          style={{ background: 'rgba(255,255,255,0.02)' }}
         >
-          <MaestroAvatar size={36} />
-          <div>
-            <p className="text-sm font-semibold text-white tracking-wide">Maestro</p>
-            <p className="text-xs text-slate-400">Fragrance Expert · Online</p>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={() => setShowHistory(true)}
-              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-xs font-medium transition-colors flex items-center gap-1.5 border border-amber-500/20"
-            >
-              <History className="w-3.5 h-3.5" />
-              History
-            </button>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs text-emerald-400/70">Active</span>
+          <div className="flex items-center gap-3">
+            <MaestroAvatar size={36} />
+            <div>
+              <p className="text-sm font-semibold text-white tracking-wide">Maestro</p>
+              <p className="text-xs text-slate-400">Fragrance Expert</p>
             </div>
           </div>
+          
+          <button
+            onClick={() => setShowHistory(true)}
+            className="ml-auto px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition-all flex items-center gap-2 border border-white/10 shadow-sm backdrop-blur-md"
+          >
+            <History className="w-3.5 h-3.5 text-amber-500/80" />
+            History
+          </button>
         </div>
+
+        {/* Messages Container */}
+        <div className="flex-1 relative overflow-hidden flex flex-col min-h-0">
 
         {/* Messages — scrollable, content grows from bottom up */}
         <div
@@ -814,47 +1048,113 @@ Summarize their profile warmly then give a curated recommendation.`;
           className="flex-1 overflow-y-auto"
           style={{ minHeight: 0, scrollbarWidth: 'thin', scrollbarColor: 'rgba(251,191,36,0.1) transparent' }}
         >
-          <div className="min-h-full flex flex-col justify-end px-5 pt-6 pb-3">
+          <div className="min-h-full flex flex-col justify-end px-5 pt-12 pb-3">
+            {!messages.some(m => m.role === 'user') && (
+              <div className="flex-1 flex flex-col items-center justify-center py-6 text-center w-full">
+                {/* Banner Logo — compact focus */}
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "tween", ease: "easeOut", duration: 0.5 }}
+                  className="w-full max-w-[200px] mb-5 flex justify-center"
+                >
+                  <img src={SplashLogo} alt="Maestro" className="w-full h-full object-contain" />
+                </motion.div>
+                
+                <motion.h2 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ type: "tween", ease: "easeOut", duration: 0.5, delay: 0.1 }}
+                  className="text-2xl font-bold text-white mb-2 tracking-tight"
+                >
+                  Chat with Maestro
+                </motion.h2>
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ type: "tween", ease: "easeOut", duration: 0.5, delay: 0.2 }}
+                  className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed"
+                >
+                  Your personal fragrance expert — discover, customize, and find your signature scent.
+                </motion.p>
+              </div>
+            )}
             <div className="flex flex-col gap-5">
               <AnimatePresence initial={false}>
-                {messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 18, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                  >
-                    {/* Bubble */}
-                    <div className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start items-end'}`}>
-                      {msg.role === 'assistant' && <MaestroAvatar size={36} />}
-                      <div
-                        className={`rounded-2xl px-4 py-3 text-sm shadow-md ${msg.role === 'user'
-                          ? 'max-w-[72%] bg-gradient-to-br from-amber-400 to-amber-500 text-slate-900 rounded-br-sm font-medium'
-                          : 'max-w-[82%] text-white/90 border border-white/7 rounded-bl-sm'
-                          }`}
-                        style={msg.role === 'assistant' ? { background: 'rgba(255,255,255,0.05)' } : {}}
-                      >
-                        {msg.role === 'assistant'
-                          ? msg.isStreaming
-                            ? <TypewriterText text={msg.text} onDone={() => handleStreamDone(msg.id)} />
-                            : <FormattedText text={msg.text} />
-                          : <span className="leading-relaxed">{msg.text}</span>
-                        }
+                {messages.map((msg) => {
+                  const isBot = msg.role === 'assistant';
+                  const timeStr = new Date(msg.id).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ type: 'tween', ease: 'easeOut', duration: 0.25 }}
+                      className={`flex gap-3 mb-4 ${isBot ? 'flex-row' : 'flex-row-reverse'} items-start`}
+                    >
+                      {/* Avatar */}
+                      <div className="flex-shrink-0 mt-6">
+                        {isBot ? <MaestroAvatar size={34} /> : <UserAvatar user={user} size={34} />}
                       </div>
-                      {msg.role === 'user' && <UserAvatar user={user} />}
-                    </div>
 
-                    {/* Floating golden option pills */}
-                    {msg.role === 'assistant' && msg.optionCards && !msg.isStreaming && (
-                      <OptionPills options={msg.optionCards} onSelect={label => sendMessage(label)} />
-                    )}
+                      {/* Bubble Container */}
+                      <div className={`flex flex-col gap-1.5 w-full ${isBot ? 'items-start' : 'items-end'}`} style={{ maxWidth: '72%' }}>
+                        {/* Name and Time Label */}
+                        <div className={`flex gap-2 items-center px-1 ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
+                          <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                            {isBot ? 'Maestro' : 'You'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                            {timeStr}
+                          </span>
+                        </div>
 
-                    {/* Suggestion chips */}
-                    {msg.role === 'assistant' && msg.chips && !msg.isStreaming && (
-                      <SuggestionChips suggestions={msg.chips} onSelect={prompt => sendMessage(prompt)} />
-                    )}
-                  </motion.div>
-                ))}
+                        {/* The Actual Bubble */}
+                        <div
+                          className={`px-4 py-3 text-[14px] leading-relaxed shadow-sm transition-all duration-300 ${
+                            isBot
+                              ? 'bg-[#1a1c22] text-white/90 border border-white/5 rounded-[4px_18px_18px_18px]'
+                              : 'bg-[#4b4532] text-white font-medium rounded-[18px_4px_18px_18px]'
+                          } ${ (msg.isMap || msg.showNearbyMap) ? 'w-full' : 'w-fit'}`}
+                          style={{ wordBreak: 'break-word' }}
+                        >
+                          {isBot
+                            ? (msg.isMap || msg.showNearbyMap) ? (
+                                <div className="flex flex-col w-full">
+                                  <FormattedText text={msg.text} />
+                                  <div className="mt-2 w-full">
+                                    <NearbyShopsMap />
+                                  </div>
+                                </div>
+                              ) : <FormattedText text={msg.text} />
+                            : <p className="whitespace-pre-wrap">{msg.text}</p>
+                          }
+                        </div>
+                        
+                        {/* Floating options & suggestions below bubble */}
+                        {isBot && msg.optionCards && !msg.isStreaming && (
+                          <OptionPills 
+                            options={msg.optionCards} 
+                            onSelect={label => sendMessage(label)} 
+                          />
+                        )}
+
+                        {isBot && msg.chips && (
+                          <SuggestionChips 
+                            suggestions={msg.chips} 
+                            onSelect={prompt => {
+                              setInput(prompt);
+                              inputRef.current?.focus();
+                            }} 
+                          />
+                        )}
+
+                        {!msg.isStreaming && <CopyButton text={msg.text} />}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
 
               <AnimatePresence>
@@ -865,14 +1165,15 @@ Summarize their profile warmly then give a curated recommendation.`;
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Input bar — FIXED at bottom, content flows behind it */}
+        {/* Input bar — FIXED at bottom */}
         <div
           className="flex-shrink-0 border-t border-white/5 px-4 py-3 relative z-10"
-          style={{ background: 'rgba(8,15,26,0.95)', backdropFilter: 'blur(16px)' }}
+          style={{ background: 'rgba(8,15,26,1)', backdropFilter: 'none' }}
         >
           <div
-            className="flex items-center gap-2 rounded-2xl px-4 py-2.5 transition-all duration-300"
+            className="flex items-center gap-2 rounded-[16px] px-4 py-2.5 transition-all duration-300 shadow-sm"
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.08)',
@@ -886,15 +1187,26 @@ Summarize their profile warmly then give a curated recommendation.`;
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <input
+            <textarea
               ref={inputRef}
+              rows={1}
               value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder={chatReady ? 'Ask Maestro about any fragrance...' : ''}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                  e.target.style.height = 'auto';
+                }
+              }}
+              placeholder={chatReady ? 'Type your query here ...' : ''}
               disabled={!chatReady || isLoading}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              className="flex-1 bg-transparent text-sm outline-none py-0.5 disabled:opacity-30"
-              style={{ color: 'rgba(255,255,255,0.9)', caretColor: 'rgb(251,191,36)' }}
+              className="flex-1 bg-transparent text-sm outline-none py-2 resize-none disabled:opacity-30 scrollbar-none"
+              style={{ color: 'rgba(255,255,255,0.9)', caretColor: 'rgb(251,191,36)', minHeight: '36px' }}
             />
             <style>{`input::placeholder { color: rgba(255,255,255,0.2); }`}</style>
             <button tabIndex={-1}

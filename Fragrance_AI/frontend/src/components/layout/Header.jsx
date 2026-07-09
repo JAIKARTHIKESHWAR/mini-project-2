@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Menu, Search, ShoppingCart, SunMoon } from 'lucide-react';
+import { Bell, Menu, Search, ShoppingCart } from 'lucide-react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Tooltip from '../ui/Tooltip';
@@ -7,7 +7,7 @@ import useDashboardLayoutStore from '../../features/dashboard/state/useDashboard
 import useCartStore from '../../features/dashboard/state/useCartStore';
 
 const Header = () => {
-  const { toggleSidebar, theme, toggleTheme } = useDashboardLayoutStore();
+  const { toggleSidebar } = useDashboardLayoutStore();
   const { toggleCart, items } = useCartStore();
 
   const cartCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -27,12 +27,6 @@ const Header = () => {
             <Search className="h-4 w-4" />
             <Input placeholder="Search perfumes, notes, sessions..." className="w-64" />
           </div>
-
-          <Tooltip label="Toggle theme">
-            <button className="header-icon-btn w-9 h-9 rounded-lg flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-200 relative" onClick={toggleTheme} aria-label="Toggle theme">
-              <SunMoon className="h-5 w-5" />
-            </button>
-          </Tooltip>
 
           <Tooltip label="Notifications">
             <button className="header-icon-btn w-9 h-9 rounded-lg flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-200 relative" aria-label="Notifications">

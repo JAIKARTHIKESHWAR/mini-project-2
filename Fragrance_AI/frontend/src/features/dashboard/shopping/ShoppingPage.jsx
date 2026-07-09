@@ -28,15 +28,17 @@ const ShoppingPage = () => {
   const sorted = useMemo(() => products, []);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-xs uppercase tracking-[0.1em] text-amber-200">Shopping</p>
-        <h1 className="text-2xl md:text-3xl font-semibold text-white">Curated perfumes</h1>
-        <p className="text-sm text-slate-300">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-120px)]">
+      <div className="px-1 flex-shrink-0">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/60 font-bold mb-1">Shopping</p>
+        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight">Curated perfumes</h1>
+        <p className="text-sm text-muted-foreground/80 mt-1">
           Explore luxury picks across vendors. Add to cart or open details.
         </p>
       </div>
-      <ProductGrid products={sorted} onView={viewProduct} />
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar-black">
+        <ProductGrid products={sorted} onView={viewProduct} />
+      </div>
     </div>
   );
 };

@@ -51,27 +51,27 @@ const PersonalizationLabPage = () => {
   }, [selected, fetchBlendData]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-xs uppercase tracking-[0.1em] text-amber-200">Personalization Lab</p>
-        <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Craft your blend</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-6 px-4 md:px-8 pb-10">
+      <div className="pt-2">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/60 font-bold mb-1">Personalization Lab</p>
+        <h1 className="text-2xl md:text-4xl font-black text-foreground tracking-tight">Craft your blend</h1>
+        <p className="text-sm text-muted-foreground/80 mt-1">
           Select notes, adjust the mix, and preview your scent composition.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-3">
           <ScentNotesPalette selected={selected} onToggle={toggleNote} />
         </div>
-        <div className="xl:col-span-1">
+        <div className="lg:col-span-5 h-[600px] lg:sticky lg:top-24">
           <MixingCanvas
             selected={selected}
             blendData={blendData}
             loading={loading}
           />
         </div>
-        <div className="xl:col-span-1">
+        <div className="lg:col-span-4 h-[600px] lg:sticky lg:top-24">
           <ScentResultPreview
             selected={selected}
             blendData={blendData}

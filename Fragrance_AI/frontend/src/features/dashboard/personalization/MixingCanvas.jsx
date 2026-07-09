@@ -168,7 +168,7 @@ const MixingCanvas = ({ selected, blendData, loading }) => {
                       key={accord.name}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border ${getAccordStyle(accord.name)}`}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${getAccordStyle(accord.name)}`}
                     >
                       {accord.name}
                     </motion.span>
